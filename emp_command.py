@@ -30,7 +30,7 @@
 
 
 import random
-from libavg import avg, AVGApp, Point2D
+from libavg import avg, AVGApp, Point2D, AVGAppUtil
 import engine
 
 g_Player = avg.Player.get()
@@ -127,7 +127,7 @@ class Missile(LayeredSprite):
         self.__isExploding = False
             
         self.traj = avg.LineNode(pos1=self.initPoint, pos2=self.initPoint,
-            opacity=0.6, color=self.COLOR, parent=self.layer)
+            color=self.COLOR, parent=self.layer)
 
         self.speed = random.uniform(*self.speedRange)
         self.__fade = None
@@ -182,7 +182,7 @@ class Missile(LayeredSprite):
                     m.explode()
 
 class Enemy(Missile):
-    speedRange = [1, 1.5]
+    speedRange = [0.5, 1]
     explosionClass = EnemyExplosion
     COLOR = COLOR_RED
     
@@ -294,7 +294,7 @@ class GameWordsNode(avg.WordsNode):
 class Game(engine.FadeGameState):    
     def _init(self):
         avg.LineNode(pos1=(0, INVALID_TARGET_Y), pos2=(1280, INVALID_TARGET_Y),
-            color='222222', strokewidth=0.5, parent=self)
+            color='222222', strokewidth=0.8, parent=self)
 
         Target.initLayer(self)
         Missile.initLayer(self)
@@ -517,40 +517,62 @@ class GameOver(engine.FadeGameState):
     
 class Menu(engine.FadeGameState):
     def _init(self):
-        avg.ImageNode(href='media/logo.png', pos=(0, 158), parent=self)
-        GameWordsNode(text='Touch to start', pos=(900, 360),
+        def leaveApp(e):
+            self.__exitButton.sensitive = False
+            self.__startButton.sensitive = False
+            self.engine.leave()
+        def startGame(e):
+            self.__startButton.sensitive = False
+            self.__exitButton.sensitive = False
+            self.engine.proxyState('game').setNewGame()
+            self.engine.changeState('game')
+
+        avg.ImageNode(href='logo.png', pos=(0, 158), parent=self)
+
+        GameWordsNode(text='Touch here to start', pos=(900, 360),
             fontsize=30, opacity=0.5, parent=self)
+        self.__startButton = avg.RectNode(pos=(890, 330), size=(360, 90),
+            opacity=0, parent=self)
         
         GameWordsNode(text='X', fontsize=60,
             pos=(1200, 30), color='444444', parent=self)
         self.__exitButton = avg.RectNode(pos=(1150, 0), size=(130, 120),
             opacity=0, parent=self)
         
+        self.__startButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
+            startGame)
         self.__exitButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-            lambda e: self.engine.leave())
+            leaveApp)
     
     def _postTransIn(self):
         self.__exitButton.sensitive = True
+        self.__startButton.sensitive = True
 
-    def _preTransOut(self):
-        self.__exitButton.sensitive = False
-        
     def _onKey(self, event):
         if event.keystring == 's':
             self.engine.changeState('game')
     
-    def onTouch(self, event):
-        self.engine.proxyState('game').setNewGame()
-        self.engine.changeState('game')
 
 class EmpCommand(engine.Engine):
     multitouch = True
+    def __init__(self, *args, **kwargs):
+        avg.WordsNode.addFontDir(AVGAppUtil.getMediaDir(__file__, 'fonts'))
+        super(EmpCommand, self).__init__(*args, **kwargs)
+
     def init(self):
+        self._parentNode.mediadir = AVGAppUtil.getMediaDir(__file__)
+        avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
+            size=(1280, 720), parent=self._parentNode)
+
         self.registerState('menu', Menu())
         self.registerState('game', Game())
         self.registerState('gameover', GameOver())
         self.registerState('results', Results())
         
+        self.changeState('menu')
+
+    def _enter(self):
+        super(EmpCommand, self)._enter()
         self.changeState('menu')
 
 if __name__ == '__main__':
