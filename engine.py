@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # engine module: generic game engine based on libavg, AVGApp
-# Copyright (c) 2010 OXullo Intersecans. All rights reserved.
+# Copyright (c) 2010 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
@@ -37,9 +37,8 @@ g_Log = avg.Logger.get()
 class NotImplementedError(Exception):
     '''Method is not overloaded on child class'''
 
-class InvalidStateHandle(Exception):
-    '''The given handle has no reference'''
-
+class EngineError(Exception):
+    '''Generic engine error'''
 
 class GameState(avg.DivNode):
     def __init__(self, *args, **kwargs):
@@ -80,6 +79,12 @@ class GameState(avg.DivNode):
     def _leave(self):
         pass
     
+    def _pause(self):
+        pass
+    
+    def _resume(self):
+        pass
+        
     def _update(self):
         pass
         
@@ -141,6 +146,7 @@ class Engine(AVGApp):
         self.__registeredStates = {}
         self.__currentState = None
         self.__tickTimer = None
+        self.__entryHandle = None
         super(Engine, self).__init__(*args, **kwargs)
     
     def registerState(self, handle, state):
@@ -149,22 +155,29 @@ class Engine(AVGApp):
         self.__registeredStates[handle] = state
         self._parentNode.appendChild(state)
     
+    def bootstrap(self, handle):
+        if self.__currentState:
+            raise EngineError('The game has been already bootstrapped')
+        
+        self.__entryHandle = handle
+        self.changeState(handle)
+        
     def changeState(self, handle):
-        if handle in self.__registeredStates:
-            if self.__currentState:
-                self.__currentState.leave()
-            newState = self.__registeredStates[handle]
-            newState.enter()
-            g_Log.trace(g_Log.APP, 'Changing state %s -> %s' % (self.__currentState, newState))
-            self.__currentState = newState
-        else:
-            raise InvalidStateHandle('No state with handle %s' % handle)
+        if self.__entryHandle is None:
+            raise EngineError('Game must be bootstrapped before changing its state')
+        
+        newState = self.__getState(handle)
+
+        if self.__currentState:
+            self.__currentState.leave()
+            
+        newState.enter()
+        g_Log.trace(g_Log.APP, 'Changing state %s -> %s' % (self.__currentState, newState))
+
+        self.__currentState = newState
     
     def proxyState(self, handle):
-        if handle in self.__registeredStates:
-            return self.__registeredStates[handle]
-        else:
-            raise InvalidStateHandle('No state with handle %s' % handle)
+        return self.__getState(handle)
             
     def onKey(self, event):
         if self.__currentState:
@@ -178,13 +191,25 @@ class Engine(AVGApp):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
             self.onTouch)
         self.__tickTimer = g_Player.setOnFrameHandler(self.__update)
+
+        if self.__currentState:
+            self.__currentState._resume()
     
     def _leave(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
             None)
         g_Player.clearInterval(self.__tickTimer)
         self.__tickTimer = None
+        
+        if self.__currentState:
+            self.__currentState._pause()
     
+    def __getState(self, handle):
+        if handle in self.__registeredStates:
+            return self.__registeredStates[handle]
+        else:
+             EngineError('No state with handle %s' % handle)
+        
     def __update(self):
         if self.__currentState:
             self.__currentState.update()

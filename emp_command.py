@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# EMP Command
-# Copyright (c) 2010 OXullo Intersecans. All rights reserved.
+# EMP Command: a missile command multitouch clone
+# Copyright (c) 2010 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
@@ -38,8 +38,16 @@ g_Log = avg.Logger.get()
 
 COLOR_BLUE = '0000ff'
 COLOR_RED = 'ff0000'
-INVALID_TARGET_Y = 620
 ENEMY_FULLSPEED_Y = 300
+GAMEOVER_DELAY = 4000
+RESULTS_ADDROW_DELAY = 1000
+RESULTS_DELAY = 3000
+SLOT_WIDTH = 100
+ENEMIES_WAVE_MULT = 25
+
+RESOLUTION = Point2D(1280, 720)
+
+INVALID_TARGET_Y = RESOLUTION.y - 100
 
 DEBUG = False
 
@@ -53,8 +61,7 @@ class LayeredSprite(object):
     
     @classmethod
     def initLayer(cls, parent):
-        cls.layer = avg.DivNode()
-        parent.appendChild(cls.layer)
+        cls.layer = avg.DivNode(parent=parent)
 
 
 class Explosion(LayeredSprite):
@@ -226,7 +233,6 @@ class Target(LayeredSprite):
             self.destroy()
     
     def destroy(self):
-        print 'Destroying', self
         self._node.unlink()
         self.base.unlink()
         self.objects.remove(self)
@@ -247,10 +253,12 @@ class Turret(Target):
     def __init__(self, slot, ammo):
         self._node = avg.DivNode()
         self.base = avg.PolygonNode(pos=((10,0), (0, 20), (20, 20)), fillopacity=1,
-                fillcolor=self.LIVES_COLORS[self.defaultLives], opacity=0, parent=self._node)
+                fillcolor=self.LIVES_COLORS[self.defaultLives], opacity=0,
+                parent=self._node)
         self.ammoGauge = avg.RectNode(pos=(0, 25), size=(20, 5), opacity=0,
             fillopacity=0.8, fillcolor=COLOR_BLUE, parent=self._node)
-        avg.RectNode(pos=(0, 25), size=(20, 5), color='ffffff', strokewidth=0.5, parent=self._node)
+        avg.RectNode(pos=(0, 25), size=(20, 5), color='ffffff',
+            strokewidth=0.5, parent=self._node)
         self.__ammo = ammo
         self.__initialAmmo = ammo
         super(Turret, self).__init__(slot, self._node)
@@ -328,8 +336,12 @@ class Game(engine.FadeGameState):
         
     def reset(self):
         self.__targets = []
-        self.gameData = {'initialEnemies': 0, 'enemiesDestroyed': 0, 'missilesFired':0,
-            'initialCities': 0}
+        self.gameData = {
+                'initialEnemies': 0,
+                'enemiesDestroyed': 0,
+                'missilesFired': 0,
+                'initialCities': 0
+            }
             
         for obj in Target.objects + Missile.objects:
             obj.destroy()
@@ -339,12 +351,12 @@ class Game(engine.FadeGameState):
         self.__score = 0
         
     def nextWave(self):
-        print 'nextWave(): %d' % self.__wave
         self.__wave += 1
-        self.__enemiesToSpawn = self.__wave * 25
+        self.__enemiesToSpawn = self.__wave * ENEMIES_WAVE_MULT
         self.gameData['initialEnemies'] = self.__enemiesToSpawn
 
-        slots = [Point2D(x * 100, 680) for x in xrange(1,13)]
+        slots = [Point2D(x * SLOT_WIDTH, RESOLUTION.y - 60)
+            for x in xrange(1, int(RESOLUTION.x / SLOT_WIDTH + 1))]
         random.shuffle(slots)
         
         for i in xrange(0, 3):
@@ -356,6 +368,9 @@ class Game(engine.FadeGameState):
 
         self.playTeaser('Wave %d' % self.__wave)
         self.__isPlaying = True
+        g_Log.trace(g_Log.APP, 'Entering wave %d: %s' % (
+                self.__wave, str(self.gameData))
+            )
     
     def playTeaser(self, text):
         self.__teaser.text = text
@@ -394,9 +409,10 @@ class Game(engine.FadeGameState):
                 )
             
         if self.__isPlaying:
-            if self.__enemiesToSpawn and random.randrange(0, 100) <= self.__wave:
-                if Target.objects:
-                    origin = Point2D(random.randrange(0, 1280), 0)
+            if (self.__enemiesToSpawn and
+                random.randrange(0, 100) <= self.__wave and # magic spawner
+                Target.objects):
+                    origin = Point2D(random.randrange(0, RESOLUTION.x), 0)
                     tpoint = random.choice(Target.objects).getHitPos()
                     Enemy(origin, tpoint, self.__wave, self.__enemyDestroyed)
                     self.__enemiesToSpawn -= 1
@@ -419,8 +435,13 @@ class Game(engine.FadeGameState):
             TouchFeedback(event.pos, COLOR_RED)
     
     def _onKey(self, event):
-        if event.keystring == 'x':
-            self.engine.changeState('gameover')
+        if DEBUG:
+            if event.keystring == 'x':
+                self.engine.changeState('gameover')
+                return True
+            if event.keystring == 'r':
+                self.engine.changeState('results')
+                return True
             
     def __enemyDestroyed(self, enemy, gotDestination):
         if not gotDestination:
@@ -438,7 +459,7 @@ class Game(engine.FadeGameState):
             self.engine.changeState('gameover')
     
         if not self.__enemiesToSpawn and not Missile.filter(Enemy):
-            print 'Exit condition', self.__enemiesToSpawn, Missile.filter(Enemy)
+            g_Log.trace(g_Log.APP, 'Wave ended')
             self.engine.changeState('results')
             
     def __teaserTimer(self):
@@ -447,29 +468,39 @@ class Game(engine.FadeGameState):
 
 class Results(engine.FadeGameState):
     def _init(self):
-        self.__resultHeader = GameWordsNode(pos=(640, 220), alignment='center',
+        self.__resultHeader = GameWordsNode(
+            pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 140), alignment='center',
             fontsize=70, opacity=0.5, color='ff2222', parent=self)
         
-        self.__resultsParagraph = GameWordsNode(pos=(640, 320),
-            alignment='center', fontsize=40, opacity=0.5,
-            color='aaaaaa', parent=self)
+        self.__resultsParagraph = GameWordsNode(
+            pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 40), alignment='center',
+            fontsize=40, opacity=0.5, color='aaaaaa', parent=self)
     
     def _preTransIn(self):
-        self.__resultHeader.text = 'Wave %d results' % self.engine.proxyState('game').getLevel()
+        self.__resultHeader.text = 'Wave %d results' % (
+                self.engine.proxyState('game').getLevel()
+            )
         self.__resultsParagraph.text = ''
     
     def _postTransIn(self):
         gameState = self.engine.proxyState('game')
         self.rows = [
-            'Enemies destroyed: %d / %d' %
-                (gameState.gameData['enemiesDestroyed'], gameState.gameData['initialEnemies']),
-            'Cities saved: %d / %d' % (len(Target.filter(City)), gameState.gameData['initialCities']),
+            'Enemies destroyed: %d / %d' % (
+                    gameState.gameData['enemiesDestroyed'],
+                    gameState.gameData['initialEnemies'],
+                ),
+            'Cities saved: %d / %d' % (
+                    len(Target.filter(City)), 
+                    gameState.gameData['initialCities'],
+                ),
             'Cities bonus: %d' % (len(Target.filter(City))*800),
-            'EMP Missiles launched: %d (%d%% accuracy)'
-                % (gameState.gameData['missilesFired'], self.__getAccuracy()),
+            'EMP Missiles launched: %d (%d%% accuracy)' % (
+                    gameState.gameData['missilesFired'],
+                    self.__getAccuracy(),
+                ),
         ]
         gameState.addScore(len(Target.filter(City))*800)
-        g_Player.setTimeout(1000, self.addResultRow)
+        g_Player.setTimeout(RESULTS_ADDROW_DELAY, self.addResultRow)
     
     def returnToGame(self):
         self.engine.changeState('game')
@@ -480,36 +511,33 @@ class Results(engine.FadeGameState):
         self.__resultsParagraph.text += row + '<br/>'
         
         if self.rows:
-            g_Player.setTimeout(1000, self.addResultRow)
+            g_Player.setTimeout(RESULTS_ADDROW_DELAY, self.addResultRow)
         else:
-            g_Player.setTimeout(3000, self.returnToGame)
+            g_Player.setTimeout(RESULTS_DELAY, self.returnToGame)
     
     def __getAccuracy(self):
         mfired = self.engine.proxyState('game').gameData['missilesFired']
         if mfired == 0:
             return 0
         else:
-            return (float(self.engine.proxyState('game').gameData['enemiesDestroyed']) /
-                self.engine.proxyState('game').gameData['missilesFired'] * 100)
+            return (
+                float(self.engine.proxyState('game').gameData['enemiesDestroyed']) /
+                self.engine.proxyState('game').gameData['missilesFired'] * 100
+                )
     
 class GameOver(engine.FadeGameState):
     def _init(self):
-        GameWordsNode(text='Game Over', pos=(640, 250), alignment='center',
-            fontsize=70, opacity=1, color='ff2222', parent=self)
-        self.__score = GameWordsNode(pos=(640, 350), alignment='center',
-            fontsize=40, color='aaaaaa', opacity=0.5, parent=self)
+        GameWordsNode(text='Game Over', pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 80),
+            alignment='center', fontsize=70, opacity=1, color='ff2222', parent=self)
+        self.__score = GameWordsNode(pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 + 20),
+            alignment='center', fontsize=40, color='aaaaaa', opacity=0.5, parent=self)
         self.__timeout = None
     
     def _preTransIn(self):
         self.__score.text = 'Score: %d' % self.engine.proxyState('game').getScore()
         
     def _postTransIn(self):
-        self.__timeout = g_Player.setTimeout(5000, self.__returnToMenu)
-    
-    def onTouch(self, event):
-        if self.__timeout:
-            g_Player.clearInterval(self.__timeout)
-        self.engine.changeState('menu')
+        self.__timeout = g_Player.setTimeout(GAMEOVER_DELAY, self.__returnToMenu)
     
     def __returnToMenu(self):
         self.__timeout = None
@@ -517,44 +545,71 @@ class GameOver(engine.FadeGameState):
     
 class Menu(engine.FadeGameState):
     def _init(self):
-        def leaveApp(e):
-            self.__exitButton.sensitive = False
-            self.__startButton.sensitive = False
-            self.engine.leave()
-        def startGame(e):
-            self.__startButton.sensitive = False
-            self.__exitButton.sensitive = False
-            self.engine.proxyState('game').setNewGame()
-            self.engine.changeState('game')
+        avg.ImageNode(href='logo.png', pos=(0, RESOLUTION.y - 562), parent=self)
 
-        avg.ImageNode(href='logo.png', pos=(0, 158), parent=self)
-
-        GameWordsNode(text='Touch here to start', pos=(900, 360),
-            fontsize=30, opacity=0.5, parent=self)
-        self.__startButton = avg.RectNode(pos=(890, 330), size=(360, 90),
-            opacity=0, parent=self)
+        startText = GameWordsNode(text='Touch here to start', fontsize=30,
+            opacity=0.5, parent=self)
+        startText.pos = (RESOLUTION -
+            startText.getMediaSize() - Point2D(50, RESOLUTION.y / 2))
         
-        GameWordsNode(text='X', fontsize=60,
-            pos=(1200, 30), color='444444', parent=self)
-        self.__exitButton = avg.RectNode(pos=(1150, 0), size=(130, 120),
-            opacity=0, parent=self)
+        self.__startButton = avg.RectNode(pos=startText.pos - Point2D(10, 10),
+            size=startText.getMediaSize() + Point2D(10, 20), opacity=0, parent=self)
         
         self.__startButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-            startGame)
-        self.__exitButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-            leaveApp)
+            self.__onStartGame)
+
+        if DEBUG:
+            self.__startButton.fillopacity = 0.1
+
+        if self.engine.exitButton:
+            exitText = GameWordsNode(text='X', fontsize=60, color='444444', parent=self)
+            exitText.pos = Point2D(RESOLUTION.x - exitText.getMediaSize().x - 30, 30)
+            
+            self.__exitButton = avg.RectNode(pos=exitText.pos - Point2D(20, 20),
+                size=exitText.getMediaSize() + Point2D(20, 30), opacity=0, parent=self)
+            
+            if DEBUG:
+                self.__exitButton.fillopacity = 0.1
+        
+            self.__exitButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
+                self.__onLeaveApp)
     
+    def _pause(self):
+        self.__setButtonsActive(False)
+    
+    def _resume(self):
+        self.__setButtonsActive(True)
+        
     def _postTransIn(self):
-        self.__exitButton.sensitive = True
-        self.__startButton.sensitive = True
+        self.__setButtonsActive(True)
 
     def _onKey(self, event):
-        if event.keystring == 's':
-            self.engine.changeState('game')
+        if DEBUG:
+            if event.keystring == 's':
+                self.engine.changeState('game')
+                return True
+
+    def __setButtonsActive(self, active):
+        self.__startButton.sensitive = active
+        if self.engine.exitButton:
+            self.__exitButton.sensitive = active
+        
+    def __onLeaveApp(self, e):
+        self.__setButtonsActive(False)
+        self.engine.leave()
+
+    def __onStartGame(self, e):
+        if self.engine.exitButton:
+            self.__exitButton.sensitive = False
+
+        self.__startButton.sensitive = False
+        self.engine.proxyState('game').setNewGame()
+        self.engine.changeState('game')
     
 
 class EmpCommand(engine.Engine):
     multitouch = True
+    exitButton = True
     def __init__(self, *args, **kwargs):
         avg.WordsNode.addFontDir(AVGAppUtil.getMediaDir(__file__, 'fonts'))
         super(EmpCommand, self).__init__(*args, **kwargs)
@@ -562,19 +617,16 @@ class EmpCommand(engine.Engine):
     def init(self):
         self._parentNode.mediadir = AVGAppUtil.getMediaDir(__file__)
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
-            size=(1280, 720), parent=self._parentNode)
+            size=RESOLUTION, parent=self._parentNode)
 
         self.registerState('menu', Menu())
         self.registerState('game', Game())
         self.registerState('gameover', GameOver())
         self.registerState('results', Results())
         
-        self.changeState('menu')
-
-    def _enter(self):
-        super(EmpCommand, self)._enter()
-        self.changeState('menu')
+        self.bootstrap('menu')
 
 if __name__ == '__main__':
-    EmpCommand.start(resolution=(1280, 720))
+    EmpCommand.exitButton = False
+    EmpCommand.start(resolution=RESOLUTION)
 
