@@ -423,9 +423,18 @@ class Game(engine.FadeGameState):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
         if turrets:
             if event.pos.y < INVALID_TARGET_Y:
-                turretsAlive = Target.filter(Turret)[:]
+                if len(turrets) > 1:
+                    d = abs(turrets[0].getHitPos().x - event.pos.x)
+                    selectedTurret = turrets[0]
                 
-                random.choice(turrets).fire(event.pos)
+                    for t in turrets[1:]:
+                        if abs(t.getHitPos().x - event.pos.x) < d:
+                            d = abs(t.getHitPos().x - event.pos.x)
+                            selectedTurret = t
+                else:
+                    selectedTurret = turrets[0]
+                    
+                selectedTurret.fire(event.pos)
                 self.gameData['missilesFired'] += 1
 
                 TouchFeedback(event.pos, COLOR_BLUE)
