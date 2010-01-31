@@ -44,6 +44,9 @@ RESULTS_ADDROW_DELAY = 1000
 RESULTS_DELAY = 3000
 SLOT_WIDTH = 100
 ENEMIES_WAVE_MULT = 25
+AMMO_WAVE_MULT = 20
+GREAT_HITS = 3
+TURRETS_AMOUNT = 3
 
 RESOLUTION = Point2D(1280, 720)
 
@@ -87,6 +90,13 @@ class AllyExplosion(Explosion):
     DURATION = 500
     RADIUS = 60
     COLOR = COLOR_BLUE
+    
+    def __init__(self, pos):
+        self.hits = 0
+        super(AllyExplosion, self).__init__(pos)
+
+    def addHit(self):
+        self.hits += 1
 
 class EnemyExplosion(Explosion):
     DURATION = 1000
@@ -116,7 +126,8 @@ class TextFeedback(LayeredSprite):
 
         diman = avg.LinearAnim(self.__node, 'fontsize', self.TRANSITION_TIME, 30, 60)
         opaan = avg.LinearAnim(self.__node, 'opacity', self.TRANSITION_TIME, 1, 0)
-        offsan = avg.LinearAnim(self.__node, 'pos', self.TRANSITION_TIME, pos, pos - Point2D(70, 70))
+        offsan = avg.LinearAnim(self.__node, 'pos',
+            self.TRANSITION_TIME, pos, pos - Point2D(70, 70))
         self.__anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__cleanup)
         self.__anim.start()
     
@@ -143,7 +154,8 @@ class Missile(LayeredSprite):
     def explode(self):
         if not self.__isExploding:
             self.__isExploding = True
-            self.__fade = avg.fadeOut(self.traj, self.explosionClass.DURATION / 2, self.__cleanup)
+            self.__fade = avg.fadeOut(
+                self.traj, self.explosionClass.DURATION / 2, self.__cleanup)
             self.explosionClass(self.traj.pos2)
         
             if self.explCallback:
@@ -201,7 +213,10 @@ class Enemy(Missile):
         for exp in Explosion.objects:
             if (isinstance(exp, AllyExplosion) and
                 sqdist(exp._node.pos, self.traj.pos2) < exp._node.r ** 2):
-                self.explode()
+                    exp.addHit()
+                    if exp.hits == GREAT_HITS:
+                        TextFeedback(exp._node.pos, 'GREAT!', COLOR_BLUE)
+                    self.explode()
 
     def getSpeedFactor(self):
         if self.traj.pos2.y < ENEMY_FULLSPEED_Y:
@@ -255,25 +270,22 @@ class Turret(Target):
         self.base = avg.PolygonNode(pos=((10,0), (0, 20), (20, 20)), fillopacity=1,
                 fillcolor=self.LIVES_COLORS[self.defaultLives], opacity=0,
                 parent=self._node)
-        self.ammoGauge = avg.RectNode(pos=(0, 25), size=(20, 5), opacity=0,
-            fillopacity=0.8, fillcolor=COLOR_BLUE, parent=self._node)
-        avg.RectNode(pos=(0, 25), size=(20, 5), color='ffffff',
-            strokewidth=0.5, parent=self._node)
+        self.__ammoGauge = Gauge(COLOR_BLUE, Gauge.LAYOUT_HORIZONTAL,
+            pos=(0, 25), size=(20, 5), opacity=0.5, parent=self._node)
         self.__ammo = ammo
         self.__initialAmmo = ammo
         super(Turret, self).__init__(slot, self._node)
     
     def fire(self, pos):
         self.__ammo -= 1
+        self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
         if self.__ammo > 0:
-            self.ammoGauge.size = Point2D(float(self.__ammo) / self.__initialAmmo * 20, 5)
             if self.__ammo == 5:
-                self.ammoGauge.fillcolor = COLOR_RED
+                self.__ammoGauge.setColor(COLOR_RED)
                 TextFeedback(self._node.pos, 'Low ammo!', COLOR_RED)
             TurretMissile(self._node.pos + Point2D(10, 0), pos)
             return True
         else:
-            self.ammoGauge.fillopacity = 0
             return False
     
     def hasAmmo(self):
@@ -298,7 +310,38 @@ class GameWordsNode(avg.WordsNode):
     def __init__(self, *args, **kwargs):
         kwargs['font'] = 'uni 05_53'
         super(GameWordsNode, self).__init__(*args, **kwargs)
+
+
+class Gauge(avg.DivNode):
+    LAYOUT_VERTICAL='vertical'
+    LAYOUT_HORIZONTAL='horizontal'
+    
+    def __init__(self, color, layout, *args, **kwargs):
+        super(Gauge, self).__init__(*args, **kwargs)
         
+        self.__layout = layout
+        self.__level = avg.RectNode(size=self.size, opacity=0, fillopacity=1,
+            fillcolor=color, parent=self)
+        avg.RectNode(size=self.size, color='ffffff', strokewidth=0.5, parent=self)
+    
+    def setFVal(self, fv):
+        if fv > 1:
+            fv = 1
+        elif fv < 0:
+            fv = 0
+            
+        if self.__layout == self.LAYOUT_VERTICAL:
+            self.__level.pos = Point2D(0, self.size.y * (1 - fv))
+            self.__level.size = self.size - Point2D(0, self.__level.pos.y)
+        elif self.__layout == self.LAYOUT_HORIZONTAL:
+            self.__level.pos = Point2D(0, 0)
+            self.__level.size = Point2D(self.size.x * fv, self.size.y)
+    
+    def setColor(self, color):
+        self.__level.fillcolor = color
+
+# STATES
+
 class Game(engine.FadeGameState):    
     def _init(self):
         avg.LineNode(pos1=(0, INVALID_TARGET_Y), pos2=(1280, INVALID_TARGET_Y),
@@ -321,6 +364,13 @@ class Game(engine.FadeGameState):
         self.__teaser = GameWordsNode(text='', pos=(640, 300), alignment='center',
             fontsize=70, opacity=0.5, parent=self)
         
+        self.__ammoGauge = Gauge(COLOR_BLUE, Gauge.LAYOUT_VERTICAL,
+            pos=(20, INVALID_TARGET_Y - 350), size=(15, 300), opacity=0.3, parent=self)
+        
+        self.__enemiesGauge = Gauge(COLOR_RED, Gauge.LAYOUT_VERTICAL,
+            pos=(RESOLUTION.x - 35, INVALID_TARGET_Y - 350), size=(15, 300),
+            opacity=0.3, parent=self)
+        
         if DEBUG:
             self.__debugArea = GameWordsNode(pos=(10,10), size=(300, 600), fontsize=8,
                 color='ffffff', opacity=0.7, parent=self)
@@ -338,9 +388,10 @@ class Game(engine.FadeGameState):
         self.__targets = []
         self.gameData = {
                 'initialEnemies': 0,
+                'initialAmmo': 0,
+                'initialCities': 0,
                 'enemiesDestroyed': 0,
-                'missilesFired': 0,
-                'initialCities': 0
+                'ammoFired': 0,
             }
             
         for obj in Target.objects + Missile.objects:
@@ -359,12 +410,17 @@ class Game(engine.FadeGameState):
             for x in xrange(1, int(RESOLUTION.x / SLOT_WIDTH + 1))]
         random.shuffle(slots)
         
-        for i in xrange(0, 3):
-            Turret(slots.pop(), self.__wave * 20)
+        for i in xrange(0, TURRETS_AMOUNT):
+            Turret(slots.pop(), self.__wave * AMMO_WAVE_MULT)
         
+        self.gameData['initialAmmo'] = self.__wave * AMMO_WAVE_MULT * TURRETS_AMOUNT
         self.gameData['initialCities'] = random.randrange(1, len(slots))
         for c in xrange(0, self.gameData['initialCities']):
             City(slots.pop())
+
+        self.__ammoGauge.setColor(COLOR_BLUE)
+        self.__ammoGauge.setFVal(1)
+        self.__enemiesGauge.setFVal(1)
 
         self.playTeaser('Wave %d' % self.__wave)
         self.__isPlaying = True
@@ -435,13 +491,18 @@ class Game(engine.FadeGameState):
                     selectedTurret = turrets[0]
                     
                 selectedTurret.fire(event.pos)
-                self.gameData['missilesFired'] += 1
-
+                self.gameData['ammoFired'] += 1
+                
+                afv = 1 - float(self.gameData['ammoFired']) / self.gameData['initialAmmo']
+                if afv < 0.2:
+                    self.__ammoGauge.setColor(COLOR_RED)
+                self.__ammoGauge.setFVal(afv)
                 TouchFeedback(event.pos, COLOR_BLUE)
             else:
                 TouchFeedback(event.pos, COLOR_RED)
         else:
             TouchFeedback(event.pos, COLOR_RED)
+            TextFeedback(event.pos, 'Ammo depleted!', COLOR_RED)
     
     def _onKey(self, event):
         if DEBUG:
@@ -456,6 +517,10 @@ class Game(engine.FadeGameState):
         if not gotDestination:
             self.addScore(50)
             self.gameData['enemiesDestroyed'] += 1
+            self.__enemiesGauge.setFVal(
+                    1 - float(self.gameData['enemiesDestroyed']) /
+                    self.gameData['initialEnemies']
+                )
         else:
             for obj in Target.objects:
                 if sqdist(obj.getHitPos(), enemy.traj.pos2) <= enemy.speed ** 2:
@@ -504,7 +569,7 @@ class Results(engine.FadeGameState):
                 ),
             'Cities bonus: %d' % (len(Target.filter(City))*800),
             'EMP Missiles launched: %d (%d%% accuracy)' % (
-                    gameState.gameData['missilesFired'],
+                    gameState.gameData['ammoFired'],
                     self.__getAccuracy(),
                 ),
         ]
@@ -525,13 +590,13 @@ class Results(engine.FadeGameState):
             g_Player.setTimeout(RESULTS_DELAY, self.returnToGame)
     
     def __getAccuracy(self):
-        mfired = self.engine.proxyState('game').gameData['missilesFired']
+        mfired = self.engine.proxyState('game').gameData['ammoFired']
         if mfired == 0:
             return 0
         else:
             return (
                 float(self.engine.proxyState('game').gameData['enemiesDestroyed']) /
-                self.engine.proxyState('game').gameData['missilesFired'] * 100
+                self.engine.proxyState('game').gameData['ammoFired'] * 100
                 )
     
 class GameOver(engine.FadeGameState):
