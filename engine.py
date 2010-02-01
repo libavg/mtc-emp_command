@@ -65,8 +65,10 @@ class GameState(avg.DivNode):
     def enter(self):
         self.opacity = 1
         self._enter()
+        self.sensitive = True
     
     def leave(self):
+        self.sensitive = False
         self._leave()
         self.opacity = 0
     
