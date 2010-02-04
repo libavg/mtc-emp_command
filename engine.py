@@ -51,8 +51,8 @@ class GameState(avg.DivNode):
         self.engine = engine
         self._init()
         
-    def update(self):
-        self._update()
+    def update(self, dt):
+        self._update(dt)
 
     def onTouch(self, event):
         if not self._isFrozen:
@@ -87,7 +87,7 @@ class GameState(avg.DivNode):
     def _resume(self):
         pass
         
-    def _update(self):
+    def _update(self, dt):
         pass
         
     def _onTouch(self, event):
@@ -149,6 +149,7 @@ class Engine(AVGApp):
         self.__currentState = None
         self.__tickTimer = None
         self.__entryHandle = None
+        self.__elapsedTime = 0
         super(Engine, self).__init__(*args, **kwargs)
     
     def registerState(self, handle, state):
@@ -192,7 +193,7 @@ class Engine(AVGApp):
     def _enter(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
             self.onTouch)
-        self.__tickTimer = g_Player.setOnFrameHandler(self.__update)
+        self.__tickTimer = g_Player.setOnFrameHandler(self.__onFrame)
 
         if self.__currentState:
             self.__currentState._resume()
@@ -212,6 +213,9 @@ class Engine(AVGApp):
         else:
              EngineError('No state with handle %s' % handle)
         
-    def __update(self):
+    def __onFrame(self):
         if self.__currentState:
-            self.__currentState.update()
+            self.__currentState.update(g_Player.getFrameTime() - self.__elapsedTime)
+
+        self.__elapsedTime = g_Player.getFrameTime()
+        

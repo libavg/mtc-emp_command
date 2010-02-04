@@ -29,6 +29,7 @@
 # or implied, of OXullo Intersecans.
 
 
+import os
 import random
 from libavg import avg, AVGApp, Point2D, AVGAppUtil
 import engine
@@ -48,6 +49,7 @@ AMMO_WAVE_MULT = 20
 GREAT_HITS = 3
 TURRETS_AMOUNT = 3
 ULTRASPEED_MISSILE_MUL = 7
+DELTAT_NORM_FACTOR = 17
 
 RESOLUTION = Point2D(1280, 720)
 
@@ -56,7 +58,7 @@ INVALID_TARGET_Y = RESOLUTION.y - 100
 CITY_RESCUE_SCORE = 800
 ENEMY_DESTROYED_SCORE = 50
 
-DEBUG = False
+DEBUG = 'EMP_DEBUG' in os.environ
 
 def sqdist(p1, p2):
     pd = p1 - p2
@@ -156,7 +158,8 @@ class Missile(LayeredSprite):
         self.traj = avg.LineNode(pos1=self.initPoint, pos2=self.initPoint,
             color=self.COLOR, parent=self.layer)
 
-        self.speed = random.uniform(*self.speedRange)
+        self.nominalSpeedVec = ((self.targetPoint - self.initPoint).getNormalized() * 
+            random.uniform(*self.speedRange) / DELTAT_NORM_FACTOR)
         self.__fade = None
         self.objects.append(self)
     
@@ -173,18 +176,18 @@ class Missile(LayeredSprite):
         
         self.__cleanup()
 
-    def collisionCheck(self):
+    def collisionCheck(self, dt):
         pass
     
     def getSpeedFactor(self):
         return 1
     
-    def speedVector(self):
+    def speedVector(self, dt):
         return (
-                (self.targetPoint - self.initPoint).getNormalized() *
-                self.speed *
+                self.nominalSpeedVec *
                 self.getSpeedFactor() *
-                self.speedMul
+                self.speedMul *
+                dt
             )
                 
     def __cleanup(self):
@@ -201,22 +204,24 @@ class Missile(LayeredSprite):
         return [t for t in cls.objects if isinstance(t, subClass)]
         
     @classmethod
-    def update(cls):
+    def update(cls, dt):
         for m in cls.objects:
             if not m.__isExploding:
-                m.traj.pos2 += m.speedVector()
-                m.collisionCheck()
+                m.traj.pos2 += m.speedVector(dt)
+                m.collisionCheck(dt)
 
 class Enemy(Missile):
     speedRange = [0.5, 1]
     explosionClass = EnemyExplosion
     COLOR = COLOR_RED
     
-    def __init__(self, initPoint, targetPoint, level, explCallback=None):
+    def __init__(self, initPoint, targetObj, level, explCallback=None):
         self.__level = level
-        super(Enemy, self).__init__(initPoint, targetPoint, explCallback)
+        # TODO: dangling reference
+        self.__targetObj = targetObj
+        super(Enemy, self).__init__(initPoint, targetObj.getHitPos(), explCallback)
         
-    def collisionCheck(self):
+    def collisionCheck(self, dt):
         # Check if the enemy enters an EMP shockwave
         for exp in Explosion.objects:
             if (isinstance(exp, AllyExplosion) and
@@ -228,10 +233,10 @@ class Enemy(Missile):
                     self.explCallback(self, None)
 
         # Check if the enemy reached its destination
-        v = self.speedVector()
+        v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
             self.explode()
-            self.explCallback(self, self.targetPoint)
+            self.explCallback(self, self.__targetObj)
         
 
     def getSpeedFactor(self):
@@ -248,8 +253,8 @@ class TurretMissile(Missile):
     explosionClass = AllyExplosion
     COLOR = COLOR_BLUE
 
-    def collisionCheck(self):
-        v = self.speedVector()
+    def collisionCheck(self, dt):
+        v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
             self.explode()
         
@@ -260,6 +265,7 @@ class Target(LayeredSprite):
     def __init__(self, slot, node):
         self.layer.appendChild(node)
         node.pos = slot
+        self.isDead = False
         self.lives = self.defaultLives
         self.objects.append(self)
     
@@ -272,6 +278,7 @@ class Target(LayeredSprite):
             return False
     
     def destroy(self):
+        self.isDead = True
         self._node.unlink()
         self.base.unlink()
         self.objects.remove(self)
@@ -492,30 +499,19 @@ class Game(engine.FadeGameState):
             newscore = 0
         self.setScore(newscore)
         
-    def _update(self):
+    def _update(self, dt):
         if DEBUG:
-            self.__debugArea.text = (str(Target.objects) + '<br/>' +
+            self.__debugArea.text = (
+                ('dt=%dms' % dt) + '<br/>' +
+                str(Target.objects) + '<br/>' +
                 '<br/>'.join(map(str, Missile.filter(Enemy))) + '<br/>' +
                 '<br/>'.join(map(str, Missile.filter(TurretMissile)))
                 )
             
         if self.__gameState != self.GAMESTATE_INITIALIZING:
-            Missile.update()
+            Missile.update(dt)
             self.__checkGameStatus()
-            if (self.__enemiesToSpawn and Target.objects and
-                (self.__gameState == self.GAMESTATE_ULTRASPEED or 
-                    random.randrange(0, 100) <= self.__wave)):
-                        origin = Point2D(random.randrange(0, RESOLUTION.x), 0)
-                        target = random.choice(Target.objects)
-                        Enemy(origin, target.getHitPos(), self.__wave, self.__enemyDestroyed)
-                        self.__enemiesToSpawn -= 1
-        
-            if (self.__gameState == self.GAMESTATE_PLAYING and
-                self.gameData['initialAmmo'] - self.gameData['ammoFired'] == 0 and
-                not Missile.filter(TurretMissile) and
-                not Explosion.filter(AllyExplosion)):
-                    Missile.speedMul = ULTRASPEED_MISSILE_MUL
-                    self.__changeGameState(self.GAMESTATE_ULTRASPEED)
+            self.__spawnEnemies()
     
     def _onTouch(self, event):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
@@ -559,6 +555,10 @@ class Game(engine.FadeGameState):
                 Missile.speedMul = ULTRASPEED_MISSILE_MUL
                 self.__changeGameState(self.GAMESTATE_ULTRASPEED)
                 return True
+            elif event.keystring == 'n':
+                self.__wave = 15
+                self.engine.changeState('results')
+                return True
     
     def __updateAmmoGauge(self):
         ammo = 0
@@ -571,8 +571,8 @@ class Game(engine.FadeGameState):
             self.__ammoGauge.setColor(COLOR_RED)
         self.__ammoGauge.setFVal(afv)
         
-    def __enemyDestroyed(self, enemy, gotDestination):
-        if not gotDestination:
+    def __enemyDestroyed(self, enemy, target):
+        if target is None:
             self.addScore(ENEMY_DESTROYED_SCORE)
             self.gameData['enemiesDestroyed'] += 1
             self.__enemiesGauge.setFVal(
@@ -580,24 +580,38 @@ class Game(engine.FadeGameState):
                     self.gameData['initialEnemies']
                 )
         else:
-            for obj in Target.objects:
-                # Check only x component, we calculated yet y vicinity
-                v = enemy.speedVector()
-                if abs(obj.getHitPos().x - enemy.traj.pos2.x) <= abs(v.x):
-                    if obj.hit():
-                        TextFeedback(obj.getHitPos(), 'BUSTED!', COLOR_RED)
-                    # If we lose a turret, ammo stash sink with it
-                    self.__updateAmmoGauge()
-                    return
+            if not target.isDead and target.hit():
+                TextFeedback(target.getHitPos(), 'BUSTED!', COLOR_RED)
+                # If we lose a turret, ammo stash sinks with it
+                self.__updateAmmoGauge()
         
     def __checkGameStatus(self):
+        # Game end
         if not Target.filter(Turret):
             self.engine.changeState('gameover')
-    
+        
+        # Wave end
         if not self.__enemiesToSpawn and not Missile.filter(Enemy):
             g_Log.trace(g_Log.APP, 'Wave ended')
             self.engine.changeState('results')
-            
+        
+        # Switch to ultraspeed if there's nothing the player can do
+        if (self.__gameState == self.GAMESTATE_PLAYING and
+            self.gameData['initialAmmo'] - self.gameData['ammoFired'] == 0 and
+            not Missile.filter(TurretMissile) and
+            not Explosion.filter(AllyExplosion)):
+                Missile.speedMul = ULTRASPEED_MISSILE_MUL
+                self.__changeGameState(self.GAMESTATE_ULTRASPEED)
+
+    def __spawnEnemies(self):
+        if (self.__enemiesToSpawn and Target.objects and
+            (self.__gameState == self.GAMESTATE_ULTRASPEED or 
+                random.randrange(0, 100) <= self.__wave)):
+                    origin = Point2D(random.randrange(0, RESOLUTION.x), 0)
+                    target = random.choice(Target.objects)
+                    Enemy(origin, target, self.__wave, self.__enemyDestroyed)
+                    self.__enemiesToSpawn -= 1
+        
     def __teaserTimer(self):
         g_Player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
     
@@ -765,5 +779,9 @@ class EmpCommand(engine.Engine):
 
 if __name__ == '__main__':
     EmpCommand.exitButton = False
-    EmpCommand.start(resolution=RESOLUTION)
+    if DEBUG:
+        import cProfile
+        cProfile.run('EmpCommand.start(resolution=RESOLUTION)')
+    else:
+        EmpCommand.start(resolution=RESOLUTION)
 
