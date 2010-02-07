@@ -52,6 +52,7 @@ NUKE_HITS = 4
 TURRETS_AMOUNT = 3
 ULTRASPEED_MISSILE_MUL = 7
 DELTAT_NORM_FACTOR = 17
+MAX_INSTANCE_SOUNDS = 10
 
 RESOLUTION = Point2D(1280, 800)
 
@@ -65,6 +66,24 @@ DEBUG = 'EMP_DEBUG' in os.environ
 def sqdist(p1, p2):
     pd = p1 - p2
     return pd.x ** 2 + pd.y ** 2
+
+class SoundShot(avg.SoundNode):
+    objects = []
+    def __init__(self, *args, **kwargs):
+        instances = len(filter(lambda o: o.href == kwargs['href'], self.objects))
+        if instances > MAX_INSTANCE_SOUNDS:
+            return
+        super(SoundShot, self).__init__(*args, **kwargs)
+        self.setEOFCallback(self.__cleanup)
+        self.play()
+        self.objects.append(self)
+    
+    def __cleanup(self):
+        self.objects.remove(self)
+        self.stop()
+        # Clear the callback, or the object won't be destroyed
+        self.setEOFCallback(None)
+        self.unlink(True)
 
 
 class LayeredSprite(object):
@@ -86,26 +105,32 @@ class Explosion(LayeredSprite):
         opaan = avg.LinearAnim(self._node, 'fillopacity', self.DURATION, 1, 0)
         self.__anim = avg.ParallelAnim((diman, opaan), None, self._cleanup)
         self.__anim.start()
+        
+        if self.SOUND:
+            SoundShot(href=os.path.join('snd', random.choice(self.SOUND)),
+                parent=self.layer)
+            
         self.objects.append(self)
     
     def _cleanup(self):
         self.__anim.abort()
         del self.__anim
-        self._node.unlink()
+        self._node.unlink(True)
         self.objects.remove(self)
 
     @classmethod
     def filter(cls, subClass):
         return [t for t in cls.objects if isinstance(t, subClass)]
     
-class AllyExplosion(Explosion):
+class EmpExplosion(Explosion):
     DURATION = 500
     RADIUS = 60
     COLOR = COLOR_BLUE
+    SOUND = ['emp.ogg']
     
     def __init__(self, pos):
         self.hits = 0
-        super(AllyExplosion, self).__init__(pos)
+        super(EmpExplosion, self).__init__(pos)
 
     def addHit(self):
         self.hits += 1
@@ -116,13 +141,14 @@ class AllyExplosion(Explosion):
         elif self.hits == NUKE_HITS:
             NukeBonus(self._node.pos, 20000)
         
-        super(AllyExplosion, self)._cleanup()
+        super(EmpExplosion, self)._cleanup()
         
 
-class NukeExplosion(AllyExplosion):
+class NukeExplosion(EmpExplosion):
     DURATION = 2500
     RADIUS = 600
-
+    SOUND = ['nuke.ogg']
+    
     def addHit(self):
         pass
 
@@ -130,6 +156,8 @@ class EnemyExplosion(Explosion):
     DURATION = 1000
     RADIUS = 40
     COLOR = COLOR_RED
+    SOUND = ['enemy_exp1.ogg', 'enemy_exp2.ogg', 'enemy_exp3.ogg',
+        'enemy_exp4.ogg', 'enemy_exp5.ogg']
 
 
 class TouchFeedback(LayeredSprite):
@@ -144,7 +172,7 @@ class TouchFeedback(LayeredSprite):
     
     def __cleanup(self):
         del self.__anim
-        self.__node.unlink()
+        self.__node.unlink(True)
 
 class TextFeedback(LayeredSprite):
     TRANSITION_TIME = 500
@@ -161,7 +189,7 @@ class TextFeedback(LayeredSprite):
     
     def __cleanup(self):
         del self.__anim
-        self.__node.unlink()
+        self.__node.unlink(True)
 
 
 class Bonus(LayeredSprite):
@@ -189,6 +217,7 @@ class Bonus(LayeredSprite):
         self._anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__ready)
         self._anim.start()
         
+        SoundShot(href='snd/bonus_alert.ogg', parent=self.layer)
 
     def _trigger(self):
         return False
@@ -216,6 +245,8 @@ class Bonus(LayeredSprite):
         
         if not self._trigger():
             self.__disappear()
+        else:
+            SoundShot(href='snd/bonus_drop.ogg', parent=self.layer)
         
     def __startDrag(self, event):
         self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
@@ -326,7 +357,7 @@ class Missile(LayeredSprite):
             
     def __cleanup(self):
         del self.__fade
-        self.traj.unlink()
+        self.traj.unlink(True)
         self.objects.remove(self)
 
     def __repr__(self):
@@ -357,7 +388,7 @@ class Enemy(Missile):
         
     def collisionCheck(self, dt):
         # Check if the enemy enters an EMP shockwave
-        for exp in Explosion.filter(AllyExplosion):
+        for exp in Explosion.filter(EmpExplosion):
             if sqdist(exp._node.pos, self.traj.pos2) < exp._node.r ** 2:
                     exp.addHit()
                     if exp.hits == GREAT_HITS:
@@ -385,7 +416,7 @@ class Enemy(Missile):
 
 class TurretMissile(Missile):
     speedRange = [7, 8]
-    explosionClass = AllyExplosion
+    explosionClass = EmpExplosion
     COLOR = COLOR_BLUE
 
     def __init__(self, initPoint, targetPoint, nuke=False):
@@ -417,14 +448,16 @@ class Target(LayeredSprite):
         self.lives -= 1
         if self.lives == 0:
             self.destroy()
+            SoundShot(href='snd/target_destroy.ogg', parent=self.layer)
             return True
         else:
+            SoundShot(href='snd/target_hit.ogg', parent=self.layer)
             return False
     
     def destroy(self):
         self.isDead = True
-        self._node.unlink()
-        self.base.unlink()
+        self._node.unlink(True)
+        self.base.unlink(True)
         self.objects.remove(self)
     
     def getHitPos(self):
@@ -462,11 +495,13 @@ class Turret(Target):
             TurretMissile(self._node.pos + Point2D(10, 0), pos, nuke=True)
             self.__hasNuke = False
             EmpCommand().getState('game').nukeFired = True
+            SoundShot(href='snd/nuke_launch.ogg', parent=self.layer)
         else:
             if self.__ammo > 0:
                 self.__ammo -= 1
                 self.__updateGauge()
                 TurretMissile(self._node.pos + Point2D(10, 0), pos)
+                SoundShot(href='snd/missile_launch.ogg', parent=self.layer)
                 return True
             else:
                 return False
@@ -475,6 +510,7 @@ class Turret(Target):
         self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
         if self.__ammo == 5:
             self.__ammoGauge.setColor(COLOR_RED)
+            SoundShot(href='snd/low_ammo.ogg', parent=self.layer)
             TextFeedback(self._node.pos, 'Low ammo!', COLOR_RED)
         elif self.__ammo > 5:
             self.__ammoGauge.setColor(COLOR_BLUE)
@@ -598,6 +634,11 @@ class Game(engine.FadeGameState):
         self.__gameState = self.GAMESTATE_INITIALIZING
         self.__wave = 0
         
+        self.__touchFeedback = avg.SoundNode(href='snd/touch.ogg', volume=0.2,
+            parent=self)
+        self.__touchFeedbackError = avg.SoundNode(href='snd/buzz.ogg', volume=0.2,
+            parent=self)
+        
         self.__scoreText = GameWordsNode(text='0', pos=(640, 100), alignment='center',
             fontsize=50, opacity=0.5, parent=self)
         self.__teaser = GameWordsNode(text='', pos=(640, 300), alignment='center',
@@ -616,6 +657,9 @@ class Game(engine.FadeGameState):
             pos=(RESOLUTION.x - 38, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 45), fontsize=8,
             opacity=0.5, parent=self)
         
+        self.registerBgTrack(avg.SoundNode(href='snd/game_loop.ogg', loop=True,
+            parent=self), maxVolume=0.3)
+
         if DEBUG:
             self.__debugArea = GameWordsNode(pos=(10,10), size=(300, 600), fontsize=8,
                 color='ffffff', opacity=0.7, parent=self)
@@ -740,11 +784,17 @@ class Game(engine.FadeGameState):
                 self.updateAmmoGauge()
                 
                 TouchFeedback(event.pos, COLOR_BLUE)
+                self.__touchFeedback.stop()
+                self.__touchFeedback.play()
             else:
                 TouchFeedback(event.pos, COLOR_RED)
+                self.__touchFeedbackError.stop()
+                self.__touchFeedbackError.play()
         else:
             TouchFeedback(event.pos, COLOR_RED)
-            TextFeedback(event.pos, 'Ammo depleted!', COLOR_RED)
+            self.__touchFeedbackError.stop()
+            self.__touchFeedbackError.play()
+            TextFeedback(event.pos, 'AMMO DEPLETED!', COLOR_RED)
     
     def _onKey(self, event):
         if DEBUG:
@@ -816,7 +866,7 @@ class Game(engine.FadeGameState):
         if (self.__gameState == self.GAMESTATE_PLAYING and
             self.__ammoGauge.getFVal() == 0 and
             not Missile.filter(TurretMissile) and
-            not Explosion.filter(AllyExplosion)):
+            not Explosion.filter(EmpExplosion)):
                 Missile.speedMul = ULTRASPEED_MISSILE_MUL
                 self.__changeGameState(self.GAMESTATE_ULTRASPEED)
 
@@ -846,6 +896,8 @@ class Results(engine.FadeGameState):
         self.__resultsParagraph = GameWordsNode(
             pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 40), alignment='center',
             fontsize=40, color='aaaaaa', parent=self)
+
+        self.registerBgTrack(avg.SoundNode(href='snd/results.ogg', parent=self))
     
     def _preTransIn(self):
         self.__resultHeader.text = 'Wave %d results' % (
@@ -936,6 +988,8 @@ class Menu(engine.FadeGameState):
         self.__startButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
             self.__onStartGame)
 
+        self.registerBgTrack(avg.SoundNode(href='snd/theme.ogg', loop=True, parent=self))
+        
         if DEBUG:
             self.__startButton.fillopacity = 0.1
 
@@ -973,10 +1027,12 @@ class Menu(engine.FadeGameState):
             self.__exitButton.sensitive = active
         
     def __onLeaveApp(self, e):
+        SoundShot(href='snd/click.ogg', parent=self)
         self.__setButtonsActive(False)
         self.engine.leave()
 
     def __onStartGame(self, e):
+        SoundShot(href='snd/click.ogg', parent=self)
         self.__setButtonsActive(False)
         self.engine.getState('game').setNewGame()
         self.engine.changeState('game')

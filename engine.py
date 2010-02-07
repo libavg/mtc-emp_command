@@ -60,6 +60,8 @@ class GameState(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(GameState, self).__init__(*args, **kwargs)
         self._isFrozen = False
+        self._bgTrack = None
+        self._maxBgTrackVolume = 1
         self.engine = None
         self.opacity = 0
     
@@ -67,6 +69,11 @@ class GameState(avg.DivNode):
         self.engine = engine
         self._init()
         
+    def registerBgTrack(self, soundNode, maxVolume=1):
+        self._bgTrack = soundNode
+        self._bgTrack.volume = maxVolume
+        self._maxBgTrackVolume = maxVolume
+
     def update(self, dt):
         self._update(dt)
 
@@ -82,11 +89,15 @@ class GameState(avg.DivNode):
         self.opacity = 1
         self._enter()
         self.sensitive = True
+        if self._bgTrack:
+            self._bgTrack.play()
     
     def leave(self):
         self.sensitive = False
         self._leave()
         self.opacity = 0
+        if self._bgTrack:
+            self._bgTrack.stop()
     
     def _init(self):
         pass
@@ -119,11 +130,15 @@ class TransitionGameState(GameState):
         self._isFrozen = True
         self._preTransIn()
         self._doTransIn(self.__postTransIn)
+        if self._bgTrack:
+            self._doBgTrackTransIn()
     
     def leave(self):
         self._isFrozen = True
         self._preTransOut()
         self._doTransOut(self.__postTransOut)
+        if self._bgTrack:
+            self._doBgTrackTransOut()
     
     def _doTransIn(self, postCb):
         raise NotImplementedError()
@@ -131,6 +146,12 @@ class TransitionGameState(GameState):
     def _doTransOut(self, postCb):
         raise NotImplementedError()
     
+    def _doBgTrackTransIn(self):
+        self._bgTrack.play()
+        
+    def _doBgTrackTransOut(self):
+        self._bgTrack.stop()
+
     def _preTransIn(self):
         pass
     
@@ -158,6 +179,16 @@ class FadeGameState(TransitionGameState):
     def _doTransOut(self, postCb):
         avg.fadeOut(self, self.TRANS_DURATION, postCb)
 
+    def _doBgTrackTransIn(self):
+        self._bgTrack.volume = 0
+        self._bgTrack.play()
+        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, 0,
+            self._maxBgTrackVolume).start()
+
+    def _doBgTrackTransOut(self):
+        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, self._maxBgTrackVolume
+            , 0, False, None, self._bgTrack.stop).start()
+
 
 class Engine(AVGApp):
     def __init__(self, *args, **kwargs):
@@ -179,7 +210,6 @@ class Engine(AVGApp):
             raise EngineError('The game has been already bootstrapped')
         
         self.__entryHandle = handle
-        self.changeState(handle)
         
     def changeState(self, handle):
         if self.__entryHandle is None:
@@ -213,6 +243,8 @@ class Engine(AVGApp):
 
         if self.__currentState:
             self.__currentState._resume()
+        else:
+            self.changeState(self.__entryHandle)
     
     def _leave(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
@@ -221,7 +253,8 @@ class Engine(AVGApp):
         self.__tickTimer = None
         
         if self.__currentState:
-            self.__currentState._pause()
+            self.__currentState.leave()
+            self.__currentState = None
     
     def __getState(self, handle):
         if handle in self.__registeredStates:
