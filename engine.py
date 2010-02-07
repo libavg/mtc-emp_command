@@ -40,6 +40,22 @@ class NotImplementedError(Exception):
 class EngineError(Exception):
     '''Generic engine error'''
 
+
+class Singleton(type):
+    '''
+    Singleton metaclass
+    
+    U{http://bloop.sourceforge.net/wiki/index.php/Singleton_Metaclass}
+    '''
+    def __init__(cls,name,bases,dic):
+        super(Singleton,cls).__init__(name,bases,dic)
+        cls.instance=None
+ 
+    def __call__(cls,*args,**kw):
+        if cls.instance is None:
+            cls.instance=super(Singleton,cls).__call__(*args,**kw)
+        return cls.instance
+
 class GameState(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(GameState, self).__init__(*args, **kwargs)
@@ -179,7 +195,7 @@ class Engine(AVGApp):
 
         self.__currentState = newState
     
-    def proxyState(self, handle):
+    def getState(self, handle):
         return self.__getState(handle)
             
     def onKey(self, event):
@@ -211,7 +227,7 @@ class Engine(AVGApp):
         if handle in self.__registeredStates:
             return self.__registeredStates[handle]
         else:
-             EngineError('No state with handle %s' % handle)
+             raise EngineError('No state with handle %s' % handle)
         
     def __onFrame(self):
         if self.__currentState:

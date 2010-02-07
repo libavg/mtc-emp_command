@@ -30,6 +30,7 @@
 
 
 import os
+import math
 import random
 from libavg import avg, AVGApp, Point2D, AVGAppUtil
 import engine
@@ -47,13 +48,14 @@ SLOT_WIDTH = 100
 ENEMIES_WAVE_MULT = 25
 AMMO_WAVE_MULT = 20
 GREAT_HITS = 3
+NUKE_HITS = 4
 TURRETS_AMOUNT = 3
 ULTRASPEED_MISSILE_MUL = 7
 DELTAT_NORM_FACTOR = 17
 
-RESOLUTION = Point2D(1280, 720)
+RESOLUTION = Point2D(1280, 800)
 
-INVALID_TARGET_Y = RESOLUTION.y - 100
+INVALID_TARGET_Y_OFFSET = 100
 
 CITY_RESCUE_SCORE = 800
 ENEMY_DESTROYED_SCORE = 50
@@ -82,11 +84,11 @@ class Explosion(LayeredSprite):
         
         diman = avg.LinearAnim(self._node, 'r', self.DURATION, 1, self.RADIUS)
         opaan = avg.LinearAnim(self._node, 'fillopacity', self.DURATION, 1, 0)
-        self.__anim = avg.ParallelAnim((diman, opaan), None, self.__cleanup)
+        self.__anim = avg.ParallelAnim((diman, opaan), None, self._cleanup)
         self.__anim.start()
         self.objects.append(self)
     
-    def __cleanup(self):
+    def _cleanup(self):
         self.__anim.abort()
         del self.__anim
         self._node.unlink()
@@ -107,6 +109,22 @@ class AllyExplosion(Explosion):
 
     def addHit(self):
         self.hits += 1
+    
+    def _cleanup(self):
+        if self.hits == GREAT_HITS:
+            AmmoBonus(self._node.pos, 10000)
+        elif self.hits == NUKE_HITS:
+            NukeBonus(self._node.pos, 20000)
+        
+        super(AllyExplosion, self)._cleanup()
+        
+
+class NukeExplosion(AllyExplosion):
+    DURATION = 2500
+    RADIUS = 600
+
+    def addHit(self):
+        pass
 
 class EnemyExplosion(Explosion):
     DURATION = 1000
@@ -144,19 +162,135 @@ class TextFeedback(LayeredSprite):
     def __cleanup(self):
         del self.__anim
         self.__node.unlink()
+
+
+class Bonus(LayeredSprite):
+    TRANSITION_TIME = 200
+    OPACITY = 0.6
+    TRANSITION_ZOOM = 12
+    DROP_RADIUS_SQ = 900
+    
+    spawnTimestamp = {}
+    
+    def __init__(self, pos, icon, waitTime):
+        if (self.__class__ in self.spawnTimestamp and
+            g_Player.getFrameTime() - self.spawnTimestamp[self.__class__] < waitTime):
+                return
+        else:
+            self.spawnTimestamp[self.__class__] = g_Player.getFrameTime()
+        
+        self._node = avg.ImageNode(href=icon, pos=pos, parent=self.layer)
+        diman = avg.LinearAnim(self._node, 'size', self.TRANSITION_TIME,
+            self._node.getMediaSize() * self.TRANSITION_ZOOM,
+            self._node.getMediaSize())
+        opaan = avg.LinearAnim(self._node, 'opacity', self.TRANSITION_TIME, 0, self.OPACITY)
+        offsan = avg.LinearAnim(self._node, 'pos', self.TRANSITION_TIME,
+            Point2D(pos) - self._node.getMediaSize() * self.TRANSITION_ZOOM / 2, pos)
+        self._anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__ready)
+        self._anim.start()
+        
+
+    def _trigger(self):
+        return False
+    
+    def _suckIn(self, pos, callback):
+        diman = avg.LinearAnim(self._node, 'size', self.TRANSITION_TIME,
+            self._node.size, Point2D(1,1))
+        opaan = avg.LinearAnim(self._node, 'opacity', self.TRANSITION_TIME,
+            self.OPACITY, 0)
+        offsan = avg.LinearAnim(self._node, 'pos', self.TRANSITION_TIME,
+            self._node.pos, pos)
+        self._anim = avg.ParallelAnim((diman, opaan, offsan), None,
+            callback)
+        self._anim.start()
+        
+    def __move(self, event):
+        self._node.pos = event.pos - self.__handlePos
+        
+    def __release(self, event):
+        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
+            None)
+        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
+            None)
+        self._node.releaseEventCapture(self.__cursorid)
+        
+        if not self._trigger():
+            self.__disappear()
+        
+    def __startDrag(self, event):
+        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
+            self.__release)
+        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
+            self.__move)
+        self._node.setEventCapture(event.cursorid)
+        self.__cursorid = event.cursorid
+        self.__handlePos = event.pos - self._node.pos
+        
+        self._anim.setStopCallback(None)
+        self._anim.abort()
+        self._node.opacity = self.OPACITY
+        
+        return True
+    
+    def __ready(self):
+        self._node.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
+            self.__startDrag)
+        
+        self.__disappear()
+        
+    def __disappear(self):
+        self._anim = avg.fadeOut(self._node, 3000, self._destroy)
+    
+    def _destroy(self):
+        del self._anim
+        self._node.unlink(True)
+
+class NukeBonus(Bonus):
+    def __init__(self, pos, waitTime=0):
+        super(NukeBonus, self).__init__(pos, 'bns_nuke.png', waitTime)
+        self.__targetTurret = None
+    
+    def _trigger(self):
+        def loadNuke():
+            self.__turret.loadNuke()
+            self._destroy()
+            
+        for t in Target.filter(Turret):
+            if (sqdist(self._node.pos + self._node.size / 2,
+                t.getHitPos()) < self.DROP_RADIUS_SQ):
+                    self.__turret = t
+                    self._suckIn(t.getHitPos(), loadNuke)
+                    return True
+                    
+        
+class AmmoBonus(Bonus):
+    def __init__(self, pos, waitTime=0):
+        super(AmmoBonus, self).__init__(pos, 'bns_ammo.png', waitTime)
+
+    def _trigger(self):
+        def loadAmmo():
+            self.__turret.rechargeAmmo()
+            self._destroy()
+            
+        for t in Target.filter(Turret):
+            if (sqdist(self._node.pos + self._node.size / 2,
+                t.getHitPos()) < self.DROP_RADIUS_SQ):
+                    self.__turret = t
+                    self._suckIn(t.getHitPos(), loadAmmo)
+                    return True
         
 # Abstract
 class Missile(LayeredSprite):
     objects = []
     speedMul = 1
-    def __init__(self, initPoint, targetPoint, explCallback=None):
+    TRAIL_THICKNESS = 1
+    def __init__(self, initPoint, targetPoint):
         self.initPoint = initPoint
         self.targetPoint = targetPoint
-        self.explCallback = explCallback
         self.__isExploding = False
             
         self.traj = avg.LineNode(pos1=self.initPoint, pos2=self.initPoint,
-            color=self.COLOR, parent=self.layer)
+            color=self.COLOR, strokewidth=self.TRAIL_THICKNESS, parent=self.layer)
 
         self.nominalSpeedVec = ((self.targetPoint - self.initPoint).getNormalized() * 
             random.uniform(*self.speedRange) / DELTAT_NORM_FACTOR)
@@ -189,7 +323,7 @@ class Missile(LayeredSprite):
                 self.speedMul *
                 dt
             )
-                
+            
     def __cleanup(self):
         del self.__fade
         self.traj.unlink()
@@ -215,28 +349,29 @@ class Enemy(Missile):
     explosionClass = EnemyExplosion
     COLOR = COLOR_RED
     
-    def __init__(self, initPoint, targetObj, level, explCallback=None):
+    def __init__(self, initPoint, targetObj, level):
         self.__level = level
         # TODO: dangling reference
         self.__targetObj = targetObj
-        super(Enemy, self).__init__(initPoint, targetObj.getHitPos(), explCallback)
+        super(Enemy, self).__init__(initPoint, targetObj.getHitPos())
         
     def collisionCheck(self, dt):
         # Check if the enemy enters an EMP shockwave
-        for exp in Explosion.objects:
-            if (isinstance(exp, AllyExplosion) and
-                sqdist(exp._node.pos, self.traj.pos2) < exp._node.r ** 2):
+        for exp in Explosion.filter(AllyExplosion):
+            if sqdist(exp._node.pos, self.traj.pos2) < exp._node.r ** 2:
                     exp.addHit()
                     if exp.hits == GREAT_HITS:
                         TextFeedback(exp._node.pos, 'GREAT!', COLOR_BLUE)
+                    elif exp.hits == NUKE_HITS:
+                        TextFeedback(exp._node.pos, '** AWESOME **', COLOR_BLUE)
                     self.explode()
-                    self.explCallback(self, None)
+                    EmpCommand().getState('game').enemyDestroyed(self)
 
         # Check if the enemy reached its destination
         v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
             self.explode()
-            self.explCallback(self, self.__targetObj)
+            EmpCommand().getState('game').enemyDestroyed(self, self.__targetObj)
         
 
     def getSpeedFactor(self):
@@ -253,6 +388,15 @@ class TurretMissile(Missile):
     explosionClass = AllyExplosion
     COLOR = COLOR_BLUE
 
+    def __init__(self, initPoint, targetPoint, nuke=False):
+        self.__isNuke = nuke
+        if nuke:
+            self.speedRange = [3, 3]
+            self.TRAIL_THICKNESS = 4
+            self.explosionClass = NukeExplosion
+        
+        super(TurretMissile, self).__init__(initPoint, targetPoint)
+        
     def collisionCheck(self, dt):
         v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
@@ -285,7 +429,7 @@ class Target(LayeredSprite):
     
     def getHitPos(self):
         return self._node.pos + Point2D(10, 10)
-
+    
     def __repr__(self):
         return '%s %s' % (self.__class__.__name__, self._node.pos)
         
@@ -303,22 +447,38 @@ class Turret(Target):
                 parent=self._node)
         self.__ammoGauge = Gauge(COLOR_BLUE, Gauge.LAYOUT_HORIZONTAL,
             pos=(0, 25), size=(20, 5), opacity=0.5, parent=self._node)
+        
+        self.nukeAlert = avg.ImageNode(href='nuke_alert.png', pos=(0, 35),
+            opacity=0, parent=self._node)
+        
         self.__ammo = ammo
         self.__initialAmmo = ammo
+        self.__hasNuke = False
+        self.__nukeAnim = None
         super(Turret, self).__init__(slot, self._node)
     
     def fire(self, pos):
-        self.__ammo -= 1
-        self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
-        if self.__ammo > 0:
-            if self.__ammo == 5:
-                self.__ammoGauge.setColor(COLOR_RED)
-                TextFeedback(self._node.pos, 'Low ammo!', COLOR_RED)
-            TurretMissile(self._node.pos + Point2D(10, 0), pos)
-            return True
+        if self.__hasNuke:
+            TurretMissile(self._node.pos + Point2D(10, 0), pos, nuke=True)
+            self.__hasNuke = False
+            EmpCommand().getState('game').nukeFired = True
         else:
-            return False
+            if self.__ammo > 0:
+                self.__ammo -= 1
+                self.__updateGauge()
+                TurretMissile(self._node.pos + Point2D(10, 0), pos)
+                return True
+            else:
+                return False
     
+    def __updateGauge(self):
+        self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
+        if self.__ammo == 5:
+            self.__ammoGauge.setColor(COLOR_RED)
+            TextFeedback(self._node.pos, 'Low ammo!', COLOR_RED)
+        elif self.__ammo > 5:
+            self.__ammoGauge.setColor(COLOR_BLUE)
+        
     def getAmmo(self):
         return self.__ammo
         
@@ -330,6 +490,34 @@ class Turret(Target):
         self.base.fillcolor = self.LIVES_COLORS[self.lives]
         return rc
     
+    def destroy(self):
+        if self.__nukeAnim:
+            self.__nukeAnim.setStopCallback(None)
+            self.__nukeAnim.abort()
+            
+        super(Turret, self).destroy()
+            
+    def rechargeAmmo(self):
+        self.__ammo = self.__initialAmmo
+        self.__updateGauge()
+        EmpCommand().getState('game').updateAmmoGauge()
+        
+    def loadNuke(self):
+        if not self.__hasNuke:
+            self.__hasNuke = True
+            self.__fadeInNukeAlert()
+    
+    def __fadeInNukeAlert(self):
+        self.__nukeAnim = avg.fadeIn(self.nukeAlert, 100, 1, self.__fadeOutNukeAlert)
+        
+    def __fadeOutNukeAlert(self):
+        if self.__hasNuke:
+            cb = self.__fadeInNukeAlert
+        else:
+            cb = None
+        
+        self.__nukeAnim = avg.fadeOut(self.nukeAlert, 100, cb)
+        
     def __repr__(self):
         return 'Turret: a=%d l=%d' %(self.__ammo, self.lives)
     
@@ -340,6 +528,7 @@ class City(Target):
         self.base = avg.PolygonNode(pos=((0,0), (10, 5), (20, 0), (20, 10), (0, 10)),
                 fillopacity=1, fillcolor='8888ff', opacity=0, parent=self._node)
         super(City, self).__init__(slot, self._node)
+
 
 class GameWordsNode(avg.WordsNode):
     def __init__(self, *args, **kwargs):
@@ -359,7 +548,12 @@ class Gauge(avg.DivNode):
         self.__level = avg.RectNode(size=self.size, opacity=0, fillopacity=1,
             fillcolor=color, parent=self)
         avg.RectNode(size=self.size, color='ffffff', strokewidth=0.5, parent=self)
+        
+        self.__fval = 0
     
+    def getFVal(self):
+        return self.__fval
+        
     def setFVal(self, fv):
         if fv > 1:
             fv = 1
@@ -372,6 +566,8 @@ class Gauge(avg.DivNode):
         elif self.__layout == self.LAYOUT_HORIZONTAL:
             self.__level.pos = Point2D(0, 0)
             self.__level.size = Point2D(self.size.x * fv, self.size.y)
+        
+        self.__fval = fv
     
     def setColor(self, color):
         self.__level.fillcolor = color
@@ -383,18 +579,22 @@ class Game(engine.FadeGameState):
     GAMESTATE_PLAYING='PLAY'
     GAMESTATE_ULTRASPEED='ULTRA'
     def _init(self):
-        avg.LineNode(pos1=(0, INVALID_TARGET_Y), pos2=(1280, INVALID_TARGET_Y),
-            color='222222', strokewidth=0.8, parent=self)
+        avg.LineNode(pos1=(0, RESOLUTION.y - INVALID_TARGET_Y_OFFSET),
+            pos2=(1280, RESOLUTION.y - INVALID_TARGET_Y_OFFSET), color='222222',
+            strokewidth=0.8, parent=self)
 
         Target.initLayer(self)
         Missile.initLayer(self)
+        Bonus.initLayer(self)
         TextFeedback.initLayer(self)
         Explosion.initLayer(self)
         TouchFeedback.initLayer(self)
         
         self.gameData = {}
+        self.nukeFired = False
         self.__score = 0
         self.__enemiesToSpawn = 0
+        self.__enemiesGone = 0
         self.__gameState = self.GAMESTATE_INITIALIZING
         self.__wave = 0
         
@@ -404,14 +604,16 @@ class Game(engine.FadeGameState):
             fontsize=70, opacity=0.5, parent=self)
         
         self.__ammoGauge = Gauge(COLOR_BLUE, Gauge.LAYOUT_VERTICAL,
-            pos=(20, INVALID_TARGET_Y - 350), size=(15, 300), opacity=0.3, parent=self)
-        GameWordsNode(text='AMMO', pos=(17, INVALID_TARGET_Y - 45), fontsize=8,
-            opacity=0.5, parent=self)
+            pos=(20, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 350), size=(15, 300),
+            opacity=0.3, parent=self)
+        GameWordsNode(text='AMMO', pos=(17, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 45),
+            fontsize=8, opacity=0.5, parent=self)
         
         self.__enemiesGauge = Gauge(COLOR_RED, Gauge.LAYOUT_VERTICAL,
-            pos=(RESOLUTION.x - 35, INVALID_TARGET_Y - 350), size=(15, 300),
-            opacity=0.3, parent=self)
-        GameWordsNode(text='ENMY', pos=(RESOLUTION.x - 38, INVALID_TARGET_Y - 45), fontsize=8,
+            pos=(RESOLUTION.x - 35, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 350),
+            size=(15, 300), opacity=0.3, parent=self)
+        GameWordsNode(text='ENMY',
+            pos=(RESOLUTION.x - 38, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 45), fontsize=8,
             opacity=0.5, parent=self)
         
         if DEBUG:
@@ -446,8 +648,10 @@ class Game(engine.FadeGameState):
         
     def nextWave(self):
         Missile.speedMul = 1
+        self.nukeFired = False
         self.__wave += 1
         self.__enemiesToSpawn = self.__wave * ENEMIES_WAVE_MULT
+        self.__enemiesGone = 0
         self.gameData['initialEnemies'] = self.__enemiesToSpawn
 
         slots = [Point2D(x * SLOT_WIDTH, RESOLUTION.y - 60)
@@ -500,15 +704,18 @@ class Game(engine.FadeGameState):
         self.setScore(newscore)
         
     def _update(self, dt):
-        if DEBUG:
-            self.__debugArea.text = (
-                ('dt=%dms' % dt) + '<br/>' +
-                str(Target.objects) + '<br/>' +
-                '<br/>'.join(map(str, Missile.filter(Enemy))) + '<br/>' +
-                '<br/>'.join(map(str, Missile.filter(TurretMissile)))
-                )
-            
         if self.__gameState != self.GAMESTATE_INITIALIZING:
+            if DEBUG:
+                ammoRatio = float(self.gameData['ammoFired']) / self.gameData['initialAmmo']
+                self.__debugArea.text = (
+                    ('dt=%03dms ets=%d ar=%1.2f' % (dt,
+                        self.__enemiesToSpawn, ammoRatio)) + '<br/>' +
+                    str(self.gameData) + '<br/>' +
+                    str(Target.objects) + '<br/>' +
+                    '<br/>'.join(map(str, Missile.filter(Enemy))) + '<br/>' +
+                    '<br/>'.join(map(str, Missile.filter(TurretMissile)))
+                    )
+
             Missile.update(dt)
             self.__checkGameStatus()
             self.__spawnEnemies()
@@ -516,7 +723,7 @@ class Game(engine.FadeGameState):
     def _onTouch(self, event):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
         if turrets:
-            if event.pos.y < INVALID_TARGET_Y:
+            if event.pos.y < RESOLUTION.y - INVALID_TARGET_Y_OFFSET:
                 if len(turrets) > 1:
                     d = abs(turrets[0].getHitPos().x - event.pos.x)
                     selectedTurret = turrets[0]
@@ -530,7 +737,7 @@ class Game(engine.FadeGameState):
                     
                 selectedTurret.fire(event.pos)
                 self.gameData['ammoFired'] += 1
-                self.__updateAmmoGauge()
+                self.updateAmmoGauge()
                 
                 TouchFeedback(event.pos, COLOR_BLUE)
             else:
@@ -549,7 +756,7 @@ class Game(engine.FadeGameState):
                 return True
             elif event.keystring == 'd':
                 Target.filter(Turret)[0].hit()
-                self.__updateAmmoGauge()
+                self.updateAmmoGauge()
                 return True
             elif event.keystring == 'u':
                 Missile.speedMul = ULTRASPEED_MISSILE_MUL
@@ -557,10 +764,19 @@ class Game(engine.FadeGameState):
                 return True
             elif event.keystring == 'n':
                 self.__wave = 15
-                self.engine.changeState('results')
+                self.engine.changeState('game')
+                return True
+            elif event.keystring == 'b':
+                NukeBonus((200, 200))
+                return True
+            elif event.keystring == 'a':
+                AmmoBonus((300, 200))
+                return True
+            elif event.keystring == 'k':
+                map(lambda o: o.explode(), Missile.filter(Enemy))
                 return True
     
-    def __updateAmmoGauge(self):
+    def updateAmmoGauge(self):
         ammo = 0
         for t in Target.filter(Turret):
             ammo += t.getAmmo()
@@ -571,19 +787,20 @@ class Game(engine.FadeGameState):
             self.__ammoGauge.setColor(COLOR_RED)
         self.__ammoGauge.setFVal(afv)
         
-    def __enemyDestroyed(self, enemy, target):
+    def enemyDestroyed(self, enemy, target=None):
+        self.__enemiesGone += 1
+        self.__enemiesGauge.setFVal(
+                1 - float(self.__enemiesGone) /
+                self.gameData['initialEnemies']
+            )
         if target is None:
             self.addScore(ENEMY_DESTROYED_SCORE)
             self.gameData['enemiesDestroyed'] += 1
-            self.__enemiesGauge.setFVal(
-                    1 - float(self.gameData['enemiesDestroyed']) /
-                    self.gameData['initialEnemies']
-                )
         else:
             if not target.isDead and target.hit():
                 TextFeedback(target.getHitPos(), 'BUSTED!', COLOR_RED)
                 # If we lose a turret, ammo stash sinks with it
-                self.__updateAmmoGauge()
+                self.updateAmmoGauge()
         
     def __checkGameStatus(self):
         # Game end
@@ -597,7 +814,7 @@ class Game(engine.FadeGameState):
         
         # Switch to ultraspeed if there's nothing the player can do
         if (self.__gameState == self.GAMESTATE_PLAYING and
-            self.gameData['initialAmmo'] - self.gameData['ammoFired'] == 0 and
+            self.__ammoGauge.getFVal() == 0 and
             not Missile.filter(TurretMissile) and
             not Explosion.filter(AllyExplosion)):
                 Missile.speedMul = ULTRASPEED_MISSILE_MUL
@@ -609,9 +826,9 @@ class Game(engine.FadeGameState):
                 random.randrange(0, 100) <= self.__wave)):
                     origin = Point2D(random.randrange(0, RESOLUTION.x), 0)
                     target = random.choice(Target.objects)
-                    Enemy(origin, target, self.__wave, self.__enemyDestroyed)
+                    Enemy(origin, target, self.__wave)
                     self.__enemiesToSpawn -= 1
-        
+    
     def __teaserTimer(self):
         g_Player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
     
@@ -632,12 +849,12 @@ class Results(engine.FadeGameState):
     
     def _preTransIn(self):
         self.__resultHeader.text = 'Wave %d results' % (
-                self.engine.proxyState('game').getLevel()
+                self.engine.getState('game').getLevel()
             )
         self.__resultsParagraph.text = ''
     
     def _postTransIn(self):
-        gameState = self.engine.proxyState('game')
+        gameState = self.engine.getState('game')
         self.rows = [
             'Enemies destroyed: %d / %d' % (
                     gameState.gameData['enemiesDestroyed'],
@@ -648,11 +865,18 @@ class Results(engine.FadeGameState):
                     gameState.gameData['initialCities'],
                 ),
             'Cities bonus: %d' % (len(Target.filter(City)) * CITY_RESCUE_SCORE),
-            'EMP Missiles launched: %d (%d%% accuracy)' % (
-                    gameState.gameData['ammoFired'],
-                    self.__getAccuracy(),
-                ),
         ]
+        
+        if self.engine.getState('game').nukeFired:
+            self.rows.append('EMP Missiles launched: %d' % gameState.gameData['ammoFired'])
+        else:
+            self.rows.append(
+                'EMP Missiles launched: %d (%d%% accuracy)' % (
+                        gameState.gameData['ammoFired'],
+                        self.__getAccuracy(),
+                    ),
+            )
+
         gameState.addScore(len(Target.filter(City)) * CITY_RESCUE_SCORE)
         g_Player.setTimeout(RESULTS_ADDROW_DELAY, self.addResultRow)
     
@@ -670,13 +894,13 @@ class Results(engine.FadeGameState):
             g_Player.setTimeout(RESULTS_DELAY, self.returnToGame)
     
     def __getAccuracy(self):
-        mfired = self.engine.proxyState('game').gameData['ammoFired']
+        mfired = self.engine.getState('game').gameData['ammoFired']
         if mfired == 0:
             return 0
         else:
             return (
-                float(self.engine.proxyState('game').gameData['enemiesDestroyed']) /
-                self.engine.proxyState('game').gameData['ammoFired'] * 100
+                float(self.engine.getState('game').gameData['enemiesDestroyed']) /
+                self.engine.getState('game').gameData['ammoFired'] * 100
                 )
     
 class GameOver(engine.FadeGameState):
@@ -688,7 +912,7 @@ class GameOver(engine.FadeGameState):
         self.__timeout = None
     
     def _preTransIn(self):
-        self.__score.text = 'Score: %d' % self.engine.proxyState('game').getScore()
+        self.__score.text = 'Score: %d' % self.engine.getState('game').getScore()
         
     def _postTransIn(self):
         self.__timeout = g_Player.setTimeout(GAMEOVER_DELAY, self.__returnToMenu)
@@ -754,11 +978,13 @@ class Menu(engine.FadeGameState):
 
     def __onStartGame(self, e):
         self.__setButtonsActive(False)
-        self.engine.proxyState('game').setNewGame()
+        self.engine.getState('game').setNewGame()
         self.engine.changeState('game')
     
 
 class EmpCommand(engine.Engine):
+    __metaclass__ = engine.Singleton
+    
     multitouch = True
     exitButton = True
     def __init__(self, *args, **kwargs):
@@ -766,6 +992,10 @@ class EmpCommand(engine.Engine):
         super(EmpCommand, self).__init__(*args, **kwargs)
 
     def init(self):
+        # If the program is called by an appchooser, change screen's resolution
+        global RESOLUTION
+        RESOLUTION = g_Player.getRootNode().size
+        
         self._parentNode.mediadir = AVGAppUtil.getMediaDir(__file__)
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
             size=RESOLUTION, parent=self._parentNode)
