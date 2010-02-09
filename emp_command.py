@@ -519,7 +519,7 @@ class Turret(Target):
         return self.__ammo
         
     def hasAmmo(self):
-        return self.__ammo > 0
+        return self.__ammo > 0 or self.__hasNuke
         
     def hit(self):
         rc = super(Turret, self).hit()
