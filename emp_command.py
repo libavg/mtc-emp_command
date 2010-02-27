@@ -33,6 +33,7 @@ import os
 import math
 import random
 from libavg import avg, AVGApp, Point2D, AVGAppUtil
+
 import engine
 
 g_Player = avg.Player.get()
@@ -67,24 +68,6 @@ def sqdist(p1, p2):
     pd = p1 - p2
     return pd.x ** 2 + pd.y ** 2
 
-class SoundShot(avg.SoundNode):
-    objects = []
-    def __init__(self, *args, **kwargs):
-        instances = len(filter(lambda o: o.href == kwargs['href'], self.objects))
-        if instances > MAX_INSTANCE_SOUNDS:
-            return
-        super(SoundShot, self).__init__(*args, **kwargs)
-        self.setEOFCallback(self.__cleanup)
-        self.play()
-        self.objects.append(self)
-    
-    def __cleanup(self):
-        self.objects.remove(self)
-        self.stop()
-        # Clear the callback, or the object won't be destroyed
-        self.setEOFCallback(None)
-        self.unlink(True)
-
 
 class LayeredSprite(object):
     layer = None
@@ -107,8 +90,7 @@ class Explosion(LayeredSprite):
         self.__anim.start()
         
         if self.SOUND:
-            SoundShot(href=os.path.join('snd', random.choice(self.SOUND)),
-                parent=self.layer)
+            engine.SoundManager.play(random.choice(self.SOUND))
             
         self.objects.append(self)
     
@@ -217,7 +199,7 @@ class Bonus(LayeredSprite):
         self._anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__ready)
         self._anim.start()
         
-        SoundShot(href='snd/bonus_alert.ogg', parent=self.layer)
+        engine.SoundManager.play('bonus_alert.ogg')
 
     def _trigger(self):
         return False
@@ -246,7 +228,7 @@ class Bonus(LayeredSprite):
         if not self._trigger():
             self.__disappear()
         else:
-            SoundShot(href='snd/bonus_drop.ogg', parent=self.layer)
+            engine.SoundManager.play('bonus_drop.ogg')
         
     def __startDrag(self, event):
         self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
@@ -448,10 +430,10 @@ class Target(LayeredSprite):
         self.lives -= 1
         if self.lives == 0:
             self.destroy()
-            SoundShot(href='snd/target_destroy.ogg', parent=self.layer)
+            engine.SoundManager.play('target_destroy.ogg')
             return True
         else:
-            SoundShot(href='snd/target_hit.ogg', parent=self.layer)
+            engine.SoundManager.play('target_hit.ogg')
             return False
     
     def destroy(self):
@@ -495,13 +477,13 @@ class Turret(Target):
             TurretMissile(self._node.pos + Point2D(10, 0), pos, nuke=True)
             self.__hasNuke = False
             EmpCommand().getState('game').nukeFired = True
-            SoundShot(href='snd/nuke_launch.ogg', parent=self.layer)
+            engine.SoundManager.play('nuke_launch.ogg')
         else:
             if self.__ammo > 0:
                 self.__ammo -= 1
                 self.__updateGauge()
                 TurretMissile(self._node.pos + Point2D(10, 0), pos)
-                SoundShot(href='snd/missile_launch.ogg', parent=self.layer)
+                engine.SoundManager.play('missile_launch.ogg')
                 return True
             else:
                 return False
@@ -510,7 +492,7 @@ class Turret(Target):
         self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
         if self.__ammo == 5:
             self.__ammoGauge.setColor(COLOR_RED)
-            SoundShot(href='snd/low_ammo.ogg', parent=self.layer)
+            engine.SoundManager.play('low_ammo.ogg')
             TextFeedback(self._node.pos, 'Low ammo!', COLOR_RED)
         elif self.__ammo > 5:
             self.__ammoGauge.setColor(COLOR_BLUE)
@@ -614,6 +596,7 @@ class Game(engine.FadeGameState):
     GAMESTATE_INITIALIZING='INIT'
     GAMESTATE_PLAYING='PLAY'
     GAMESTATE_ULTRASPEED='ULTRA'
+    
     def _init(self):
         avg.LineNode(pos1=(0, RESOLUTION.y - INVALID_TARGET_Y_OFFSET),
             pos2=(1280, RESOLUTION.y - INVALID_TARGET_Y_OFFSET), color='222222',
@@ -634,10 +617,8 @@ class Game(engine.FadeGameState):
         self.__gameState = self.GAMESTATE_INITIALIZING
         self.__wave = 0
         
-        self.__touchFeedback = avg.SoundNode(href='snd/touch.ogg', volume=0.2,
-            parent=self)
-        self.__touchFeedbackError = avg.SoundNode(href='snd/buzz.ogg', volume=0.2,
-            parent=self)
+        engine.SoundManager.allocate('touch.ogg')
+        engine.SoundManager.allocate('buzz.ogg')
         
         self.__scoreText = GameWordsNode(text='0', pos=(640, 100), alignment='center',
             fontsize=50, opacity=0.5, parent=self)
@@ -657,8 +638,7 @@ class Game(engine.FadeGameState):
             pos=(RESOLUTION.x - 38, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 45), fontsize=8,
             opacity=0.5, parent=self)
         
-        self.registerBgTrack(avg.SoundNode(href='snd/game_loop.ogg', loop=True,
-            parent=self), maxVolume=0.3)
+        self.registerBgTrack('game_loop.ogg', maxVolume=0.3)
 
         if DEBUG:
             self.__debugArea = GameWordsNode(pos=(10,10), size=(300, 600), fontsize=8,
@@ -784,16 +764,13 @@ class Game(engine.FadeGameState):
                 self.updateAmmoGauge()
                 
                 TouchFeedback(event.pos, COLOR_BLUE)
-                self.__touchFeedback.stop()
-                self.__touchFeedback.play()
+                engine.SoundManager.play('touch.ogg')
             else:
                 TouchFeedback(event.pos, COLOR_RED)
-                self.__touchFeedbackError.stop()
-                self.__touchFeedbackError.play()
+                engine.SoundManager.play('buzz.ogg')
         else:
             TouchFeedback(event.pos, COLOR_RED)
-            self.__touchFeedbackError.stop()
-            self.__touchFeedbackError.play()
+            engine.SoundManager.play('buzz.ogg')
             TextFeedback(event.pos, 'AMMO DEPLETED!', COLOR_RED)
     
     def _onKey(self, event):
@@ -897,7 +874,7 @@ class Results(engine.FadeGameState):
             pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 40), alignment='center',
             fontsize=40, color='aaaaaa', parent=self)
 
-        self.registerBgTrack(avg.SoundNode(href='snd/results.ogg', parent=self))
+        self.registerBgTrack('results.ogg')
     
     def _preTransIn(self):
         self.__resultHeader.text = 'Wave %d results' % (
@@ -988,7 +965,7 @@ class Menu(engine.FadeGameState):
         self.__startButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
             self.__onStartGame)
 
-        self.registerBgTrack(avg.SoundNode(href='snd/theme.ogg', loop=True, parent=self))
+        self.registerBgTrack('theme.ogg')
         
         if DEBUG:
             self.__startButton.fillopacity = 0.1
@@ -1027,12 +1004,12 @@ class Menu(engine.FadeGameState):
             self.__exitButton.sensitive = active
         
     def __onLeaveApp(self, e):
-        SoundShot(href='snd/click.ogg', parent=self)
+        engine.SoundManager.play('click.ogg')
         self.__setButtonsActive(False)
         self.engine.leave()
 
     def __onStartGame(self, e):
-        SoundShot(href='snd/click.ogg', parent=self)
+        engine.SoundManager.play('click.ogg')
         self.__setButtonsActive(False)
         self.engine.getState('game').setNewGame()
         self.engine.changeState('game')
@@ -1052,10 +1029,34 @@ class EmpCommand(engine.Engine):
         global RESOLUTION
         RESOLUTION = g_Player.getRootNode().size
         
+        g_Log.trace(g_Log.APP, 'Setting resolution %s' % RESOLUTION)
+        if engine.USE_PYGAME_MIXER:
+            g_Log.trace(g_Log.APP, 'Using pygame.mixer for audio FX')
+        else:
+            g_Log.trace(g_Log.APP, 'Using libavg sound nodes for audio FX')
+        
         self._parentNode.mediadir = AVGAppUtil.getMediaDir(__file__)
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
             size=RESOLUTION, parent=self._parentNode)
-
+        
+        engine.SoundManager.init(self._parentNode)
+        
+        engine.SoundManager.allocate('bonus_alert.ogg')
+        engine.SoundManager.allocate('bonus_drop.ogg')
+        engine.SoundManager.allocate('click.ogg')
+        engine.SoundManager.allocate('emp.ogg', 5)
+        engine.SoundManager.allocate('enemy_exp1.ogg', 2)
+        engine.SoundManager.allocate('enemy_exp2.ogg', 2)
+        engine.SoundManager.allocate('enemy_exp3.ogg', 2)
+        engine.SoundManager.allocate('enemy_exp4.ogg', 2)
+        engine.SoundManager.allocate('enemy_exp5.ogg', 2)
+        engine.SoundManager.allocate('low_ammo.ogg')
+        engine.SoundManager.allocate('missile_launch.ogg', 5)
+        engine.SoundManager.allocate('nuke.ogg')
+        engine.SoundManager.allocate('nuke_launch.ogg')
+        engine.SoundManager.allocate('target_destroy.ogg', 5)
+        engine.SoundManager.allocate('target_hit.ogg')
+        
         self.registerState('menu', Menu())
         self.registerState('game', Game())
         self.registerState('gameover', GameOver())

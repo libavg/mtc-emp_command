@@ -28,7 +28,17 @@
 # authors and should not be interpreted as representing official policies, either expressed
 # or implied, of OXullo Intersecans.
 
+USE_PYGAME_MIXER = True
+
+import os
 from libavg import avg, AVGApp
+
+if USE_PYGAME_MIXER:
+    try:
+        import pygame.mixer
+    except ImportError:
+        USE_PYGAME_MIXER = False
+
 
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
@@ -56,6 +66,48 @@ class Singleton(type):
             cls.instance=super(Singleton,cls).__call__(*args,**kw)
         return cls.instance
 
+
+class SoundManager(object):
+    objects = {}
+
+    @classmethod
+    def init(cls, parent):
+        cls.parent = parent
+        if USE_PYGAME_MIXER:
+            pygame.mixer.init(frequency=44100, buffer=1024)
+
+    @classmethod
+    def getSample(cls, fileName, loop=False):
+        if USE_PYGAME_MIXER:
+            return pygame.mixer.Sound(os.path.join('media', 'snd', fileName))
+        else:
+            return avg.SoundNode(href=os.path.join('snd', fileName), loop=loop,
+                parent=cls.parent)
+
+    @classmethod
+    def allocate(cls, fileName, nodes=1):
+        if fileName in cls.objects:
+            raise RuntimeError('Sound sample %s is yet allocated' % fileName)
+
+        slst = []
+        for i in xrange(0, nodes):
+            s = SoundManager.getSample(fileName)
+            slst.append(s)
+
+        cls.objects[fileName] = slst
+
+    @classmethod
+    def play(cls, fileName):
+        if not fileName in cls.objects:
+            raise RuntimeError('Sound sample %s hasn\'t been allocated' % fileName)
+
+        mySound = cls.objects[fileName].pop(0)
+        if not USE_PYGAME_MIXER:
+            mySound.stop()
+        mySound.play()
+        cls.objects[fileName].append(mySound)
+
+
 class GameState(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(GameState, self).__init__(*args, **kwargs)
@@ -69,9 +121,12 @@ class GameState(avg.DivNode):
         self.engine = engine
         self._init()
         
-    def registerBgTrack(self, soundNode, maxVolume=1):
-        self._bgTrack = soundNode
-        self._bgTrack.volume = maxVolume
+    def registerBgTrack(self, fileName, maxVolume=1):
+        self._bgTrack = SoundManager.getSample(fileName, loop=True)
+        if USE_PYGAME_MIXER:
+            self._bgTrack.set_volume(maxVolume)
+        else:
+            self._bgTrack.volume = maxVolume
         self._maxBgTrackVolume = maxVolume
 
     def update(self, dt):
@@ -180,14 +235,20 @@ class FadeGameState(TransitionGameState):
         avg.fadeOut(self, self.TRANS_DURATION, postCb)
 
     def _doBgTrackTransIn(self):
-        self._bgTrack.volume = 0
-        self._bgTrack.play()
-        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, 0,
-            self._maxBgTrackVolume).start()
+        if USE_PYGAME_MIXER:
+            self._bgTrack.play(loops=-1, fade_ms=self.TRANS_DURATION)
+        else:
+            self._bgTrack.volume = 0
+            self._bgTrack.play()
+            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, 0,
+                self._maxBgTrackVolume).start()
 
     def _doBgTrackTransOut(self):
-        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, self._maxBgTrackVolume
-            , 0, False, None, self._bgTrack.stop).start()
+        if USE_PYGAME_MIXER:
+            self._bgTrack.fadeout(self.TRANS_DURATION)
+        else:
+            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, self._maxBgTrackVolume,
+                0, False, None, self._bgTrack.stop).start()
 
 
 class Engine(AVGApp):
