@@ -289,7 +289,7 @@ class Engine(AVGApp):
     def getState(self, handle):
         return self.__getState(handle)
             
-    def onKey(self, event):
+    def onKeyDown(self, event):
         if self.__currentState:
             self.__currentState.onKey(event)
     
