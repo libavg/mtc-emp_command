@@ -28,14 +28,20 @@
 # authors and should not be interpreted as representing official policies, either expressed
 # or implied, of OXullo Intersecans.
 
-USE_PYGAME_MIXER = True
-
 import os
+import pickle
+import atexit
 from libavg import avg, AVGApp
+import config
+
+USE_PYGAME_MIXER = config.SOUND_PYGAME
 
 if USE_PYGAME_MIXER:
     try:
         import pygame.mixer
+        pygame.mixer.init(frequency=config.SOUND_FREQUENCY,
+                buffer=config.SOUND_BUFFER_SIZE)
+        pygame.mixer.set_num_channels(config.SOUND_VOICES)
     except ImportError:
         USE_PYGAME_MIXER = False
 
@@ -73,21 +79,20 @@ class SoundManager(object):
     @classmethod
     def init(cls, parent):
         cls.parent = parent
-        if USE_PYGAME_MIXER:
-            pygame.mixer.init(frequency=44100, buffer=1024)
 
     @classmethod
     def getSample(cls, fileName, loop=False):
         if USE_PYGAME_MIXER:
-            return pygame.mixer.Sound(os.path.join('media', 'snd', fileName))
+            base = os.path.dirname(os.path.abspath(__file__))
+            return pygame.mixer.Sound(os.path.join(base, 'media', 'snd', fileName))
         else:
             return avg.SoundNode(href=os.path.join('snd', fileName), loop=loop,
-                parent=cls.parent)
+                    parent=cls.parent)
 
     @classmethod
     def allocate(cls, fileName, nodes=1):
         if fileName in cls.objects:
-            raise RuntimeError('Sound sample %s is yet allocated' % fileName)
+            raise RuntimeError('Sound sample %s has been already allocated' % fileName)
 
         slst = []
         for i in xrange(0, nodes):
@@ -104,8 +109,118 @@ class SoundManager(object):
         mySound = cls.objects[fileName].pop(0)
         if not USE_PYGAME_MIXER:
             mySound.stop()
-        mySound.play()
+        
+        sc = mySound.play()
+
+        if USE_PYGAME_MIXER and sc is None:
+            g_Log.trace(g_Log.WARNING, 'Sound allocation failed: %s' % mySound)
+            
         cls.objects[fileName].append(mySound)
+
+
+class ScoreEntry(object):
+    def __init__(self, name, points):
+        if type(points) not in (int, float):
+            raise ValueError('Points must be expressed in int/float '
+                    '(%s, %s)' % (points, type(points)))
+        self.name = name
+        self.points = points
+        
+    def __cmp__(self, other):
+        if type(other) != ScoreEntry:
+            raise TypeError('Cannot compare ScoreEntry with %s' %
+                other.__class__.__name__)
+        return cmp(self.points, other.points)
+    
+    def __repr__(self):
+        return '<%s: name=%s points=%d>' % (self.__class__.__name__,
+                self.name, self.points)
+
+
+class HiscoreDatabase(object):
+    PICKLE_PROTO = 0
+    
+    def __init__(self, dataFile, maxSize=20):
+        self.__dataFile = dataFile
+        self.__data = []
+        self.__maxSize = maxSize
+        atexit.register(self.__dump)
+
+        g_Log.trace(g_Log.APP, 'Initializing hiscore database %s' % dataFile)
+
+        if not self.__load(dataFile) and os.path.exists(dataFile + '.bak'):
+            if not self.__load(dataFile + '.bak'):
+                g_Log.trace(g_Log.ERROR,
+                        'Cannot recover hiscore data, starting from scratch')
+            else:
+                g_Log.trace(g_Log.WARNING,
+                        'Hiscore data file is unreadable, using backup')
+        elif not os.path.exists(dataFile):
+            g_Log.trace(g_Log.WARNING, 'Hiscore data unavailable, generating '
+                    'random scores')
+            self.fillShit()
+    
+    def isFull(self):
+        return len(self.__data) >= self.__maxSize
+        
+    def addScore(self, score, sync=True):
+        self.__data.append(score)
+        self.__data = sorted(self.__data, reverse=True)
+        print self.__data
+
+        if sync:
+            self.__dump()
+    
+    @property
+    def data(self):
+        return self.__data
+    
+    def fillShit(self):
+        import random
+        rng = 'QWERTZUIOPASDFGHJKLYXCVBNM'
+        for i in xrange(self.__maxSize):
+            self.addScore(ScoreEntry(random.choice(rng) + \
+                    random.choice(rng) + \
+                    random.choice(rng),
+                    random.randrange(80, 300) * 50), sync=False)
+            
+    def __load(self, fileName):
+        try:
+            f = open(fileName)
+        except IOError:
+            return False
+        
+        try:
+            self.__data = pickle.load(f)
+        except:
+            f.close()
+            return False
+        
+        f.close()
+        
+        if len(self.__data) > self.__maxSize:
+            g_Log.trace(g_Log.WARNING, 'Slicing score data, trashing %d records' % (
+                    len(self.__data) - self.__maxSize))
+            self.__data = self.__data[0:self.__maxSize]
+            
+        return True
+        
+    def __dump(self):
+        if os.path.exists(self.__dataFile):
+            try:
+                os.rename(self.__dataFile, self.__dataFile + '.bak')
+            except OSError:
+                g_Log.trace(g_Log.WARNING, 'Cannot create hiscores backup')
+        
+        try:
+            f = open(self.__dataFile, 'wb')
+        except IOError:
+            g_Log.trace(g_Log.ERROR, 'Cannot safely save hiscores')
+            return
+        
+        pickle.dump(self.__data, f, self.PICKLE_PROTO)
+        f.close()
+        g_Log.trace(g_Log.APP, 'Hiscore database dumped')
 
 
 class GameState(avg.DivNode):
@@ -116,6 +231,7 @@ class GameState(avg.DivNode):
         self._maxBgTrackVolume = 1
         self.engine = None
         self.opacity = 0
+        self.sensitive = False
     
     def registerEngine(self, engine):
         self.engine = engine
@@ -189,6 +305,7 @@ class TransitionGameState(GameState):
             self._doBgTrackTransIn()
     
     def leave(self):
+        self.sensitive = False
         self._isFrozen = True
         self._preTransOut()
         self._doTransOut(self.__postTransOut)
@@ -222,10 +339,12 @@ class TransitionGameState(GameState):
     def __postTransIn(self):
         self._isFrozen = False
         self._postTransIn()
+        self.sensitive = True
     
     def __postTransOut(self):
         self._isFrozen = False
         self._postTransOut()
+
 
 class FadeGameState(TransitionGameState):
     def _doTransIn(self, postCb):
@@ -241,14 +360,15 @@ class FadeGameState(TransitionGameState):
             self._bgTrack.volume = 0
             self._bgTrack.play()
             avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, 0,
-                self._maxBgTrackVolume).start()
+                    self._maxBgTrackVolume).start()
 
     def _doBgTrackTransOut(self):
         if USE_PYGAME_MIXER:
             self._bgTrack.fadeout(self.TRANS_DURATION)
         else:
-            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, self._maxBgTrackVolume,
-                0, False, None, self._bgTrack.stop).start()
+            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION,
+                    self._maxBgTrackVolume, 0, False, None,
+                    self._bgTrack.stop).start()
 
 
 class Engine(AVGApp):
@@ -282,7 +402,8 @@ class Engine(AVGApp):
             self.__currentState.leave()
             
         newState.enter()
-        g_Log.trace(g_Log.APP, 'Changing state %s -> %s' % (self.__currentState, newState))
+        g_Log.trace(g_Log.APP, 'Changing state %s -> %s' % (self.__currentState,
+                newState))
 
         self.__currentState = newState
     
@@ -299,7 +420,7 @@ class Engine(AVGApp):
     
     def _enter(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-            self.onTouch)
+                self.onTouch)
         self.__tickTimer = g_Player.setOnFrameHandler(self.__onFrame)
 
         if self.__currentState:
@@ -308,8 +429,8 @@ class Engine(AVGApp):
             self.changeState(self.__entryHandle)
     
     def _leave(self):
-        self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-            None)
+        self._parentNode.setEventHandler(avg.CURSORDOWN,
+                avg.MOUSE | avg.TOUCH, None)
         g_Player.clearInterval(self.__tickTimer)
         self.__tickTimer = None
         
@@ -328,4 +449,3 @@ class Engine(AVGApp):
             self.__currentState.update(g_Player.getFrameTime() - self.__elapsedTime)
 
         self.__elapsedTime = g_Player.getFrameTime()
-        

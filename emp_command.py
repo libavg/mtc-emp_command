@@ -35,32 +35,11 @@ import random
 from libavg import avg, AVGApp, Point2D, AVGAppUtil
 
 import engine
+import widgets
+import config
 
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
-
-COLOR_BLUE = '0000ff'
-COLOR_RED = 'ff0000'
-ENEMY_FULLSPEED_Y = 300
-GAMEOVER_DELAY = 4000
-RESULTS_ADDROW_DELAY = 1000
-RESULTS_DELAY = 3000
-SLOT_WIDTH = 100
-ENEMIES_WAVE_MULT = 25
-AMMO_WAVE_MULT = 20
-GREAT_HITS = 3
-NUKE_HITS = 4
-TURRETS_AMOUNT = 3
-ULTRASPEED_MISSILE_MUL = 7
-DELTAT_NORM_FACTOR = 17
-MAX_INSTANCE_SOUNDS = 10
-
-RESOLUTION = Point2D(1280, 800)
-
-INVALID_TARGET_Y_OFFSET = 100
-
-CITY_RESCUE_SCORE = 800
-ENEMY_DESTROYED_SCORE = 50
 
 DEBUG = 'EMP_DEBUG' in os.environ
 
@@ -82,7 +61,7 @@ class Explosion(LayeredSprite):
     
     def __init__(self, pos):
         self._node = avg.CircleNode(pos=pos, r=20, fillcolor=self.COLOR,
-            opacity=0, fillopacity=1, parent=self.layer)
+                opacity=0, fillopacity=1, parent=self.layer)
         
         diman = avg.LinearAnim(self._node, 'r', self.DURATION, 1, self.RADIUS)
         opaan = avg.LinearAnim(self._node, 'fillopacity', self.DURATION, 1, 0)
@@ -107,7 +86,7 @@ class Explosion(LayeredSprite):
 class EmpExplosion(Explosion):
     DURATION = 500
     RADIUS = 60
-    COLOR = COLOR_BLUE
+    COLOR = config.COLOR_BLUE
     SOUND = ['emp.ogg']
     
     def __init__(self, pos):
@@ -118,9 +97,9 @@ class EmpExplosion(Explosion):
         self.hits += 1
     
     def _cleanup(self):
-        if self.hits == GREAT_HITS:
+        if self.hits == config.GREAT_HITS:
             AmmoBonus(self._node.pos, 10000)
-        elif self.hits == NUKE_HITS:
+        elif self.hits == config.NUKE_HITS:
             NukeBonus(self._node.pos, 20000)
         
         super(EmpExplosion, self)._cleanup()
@@ -137,15 +116,15 @@ class NukeExplosion(EmpExplosion):
 class EnemyExplosion(Explosion):
     DURATION = 1000
     RADIUS = 40
-    COLOR = COLOR_RED
+    COLOR = config.COLOR_RED
     SOUND = ['enemy_exp1.ogg', 'enemy_exp2.ogg', 'enemy_exp3.ogg',
-        'enemy_exp4.ogg', 'enemy_exp5.ogg']
+            'enemy_exp4.ogg', 'enemy_exp5.ogg']
 
 
 class TouchFeedback(LayeredSprite):
     def __init__(self, pos, color):
         self.__node = avg.CircleNode(color=color, strokewidth=2,
-            parent=self.layer, r=10, pos=pos)
+                parent=self.layer, r=10, pos=pos)
         
         diman = avg.LinearAnim(self.__node, 'r', 200, 10, 20)
         opaan = avg.LinearAnim(self.__node, 'opacity', 200, 1, 0)
@@ -159,13 +138,13 @@ class TouchFeedback(LayeredSprite):
 class TextFeedback(LayeredSprite):
     TRANSITION_TIME = 500
     def __init__(self, pos, text, color):
-        self.__node = GameWordsNode(text=text,
-            parent=self.layer, pos=pos, fontsize=30, color=color, alignment='center')
+        self.__node = widgets.GameWordsNode(text=text, parent=self.layer,
+                pos=pos, fontsize=30, color=color, alignment='center')
 
         diman = avg.LinearAnim(self.__node, 'fontsize', self.TRANSITION_TIME, 30, 60)
         opaan = avg.LinearAnim(self.__node, 'opacity', self.TRANSITION_TIME, 1, 0)
         offsan = avg.LinearAnim(self.__node, 'pos',
-            self.TRANSITION_TIME, pos, pos - Point2D(70, 70))
+                self.TRANSITION_TIME, pos, pos - Point2D(70, 70))
         self.__anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__cleanup)
         self.__anim.start()
     
@@ -184,18 +163,19 @@ class Bonus(LayeredSprite):
     
     def __init__(self, pos, icon, waitTime):
         if (self.__class__ in self.spawnTimestamp and
-            g_Player.getFrameTime() - self.spawnTimestamp[self.__class__] < waitTime):
-                return
+                g_Player.getFrameTime() - self.spawnTimestamp[self.__class__] < waitTime):
+            return
         else:
             self.spawnTimestamp[self.__class__] = g_Player.getFrameTime()
         
         self._node = avg.ImageNode(href=icon, pos=pos, parent=self.layer)
         diman = avg.LinearAnim(self._node, 'size', self.TRANSITION_TIME,
-            self._node.getMediaSize() * self.TRANSITION_ZOOM,
-            self._node.getMediaSize())
-        opaan = avg.LinearAnim(self._node, 'opacity', self.TRANSITION_TIME, 0, self.OPACITY)
+                self._node.getMediaSize() * self.TRANSITION_ZOOM,
+                self._node.getMediaSize())
+        opaan = avg.LinearAnim(self._node, 'opacity',
+                self.TRANSITION_TIME, 0, self.OPACITY)
         offsan = avg.LinearAnim(self._node, 'pos', self.TRANSITION_TIME,
-            Point2D(pos) - self._node.getMediaSize() * self.TRANSITION_ZOOM / 2, pos)
+                Point2D(pos) - self._node.getMediaSize() * self.TRANSITION_ZOOM / 2, pos)
         self._anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__ready)
         self._anim.start()
         
@@ -206,23 +186,20 @@ class Bonus(LayeredSprite):
     
     def _suckIn(self, pos, callback):
         diman = avg.LinearAnim(self._node, 'size', self.TRANSITION_TIME,
-            self._node.size, Point2D(1,1))
+                self._node.size, Point2D(1,1))
         opaan = avg.LinearAnim(self._node, 'opacity', self.TRANSITION_TIME,
-            self.OPACITY, 0)
+                self.OPACITY, 0)
         offsan = avg.LinearAnim(self._node, 'pos', self.TRANSITION_TIME,
-            self._node.pos, pos)
-        self._anim = avg.ParallelAnim((diman, opaan, offsan), None,
-            callback)
+                self._node.pos, pos)
+        self._anim = avg.ParallelAnim((diman, opaan, offsan), None, callback)
         self._anim.start()
         
     def __move(self, event):
         self._node.pos = event.pos - self.__handlePos
         
     def __release(self, event):
-        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
-            None)
-        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
-            None)
+        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, None)
+        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, None)
         self._node.releaseEventCapture(self.__cursorid)
         
         if not self._trigger():
@@ -231,10 +208,8 @@ class Bonus(LayeredSprite):
             engine.SoundManager.play('bonus_drop.ogg')
         
     def __startDrag(self, event):
-        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
-            self.__release)
-        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
-            self.__move)
+        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__release)
+        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, self.__move)
         self._node.setEventCapture(event.cursorid)
         self.__cursorid = event.cursorid
         self.__handlePos = event.pos - self._node.pos
@@ -246,8 +221,8 @@ class Bonus(LayeredSprite):
         return True
     
     def __ready(self):
-        self._node.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-            self.__startDrag)
+        self._node.setEventHandler(avg.CURSORDOWN,
+                avg.MOUSE | avg.TOUCH, self.__startDrag)
         
         self.__disappear()
         
@@ -303,10 +278,10 @@ class Missile(LayeredSprite):
         self.__isExploding = False
             
         self.traj = avg.LineNode(pos1=self.initPoint, pos2=self.initPoint,
-            color=self.COLOR, strokewidth=self.TRAIL_THICKNESS, parent=self.layer)
+                color=self.COLOR, strokewidth=self.TRAIL_THICKNESS, parent=self.layer)
 
         self.nominalSpeedVec = ((self.targetPoint - self.initPoint).getNormalized() * 
-            random.uniform(*self.speedRange) / DELTAT_NORM_FACTOR)
+                random.uniform(*self.speedRange) / config.DELTAT_NORM_FACTOR)
         self.__fade = None
         self.objects.append(self)
     
@@ -314,7 +289,7 @@ class Missile(LayeredSprite):
         if not self.__isExploding:
             self.__isExploding = True
             self.__fade = avg.fadeOut(
-                self.traj, self.explosionClass.DURATION / 2, self.__cleanup)
+                    self.traj, self.explosionClass.DURATION / 2, self.__cleanup)
             self.explosionClass(self.traj.pos2)
     
     def destroy(self):
@@ -344,7 +319,7 @@ class Missile(LayeredSprite):
 
     def __repr__(self):
         return '%s %s -> (%d, %d)' % (self.__class__.__name__, self.initPoint,
-            int(self.traj.pos2.x), int(self.traj.pos2.y))
+                int(self.traj.pos2.x), int(self.traj.pos2.y))
         
     @classmethod
     def filter(cls, subClass):
@@ -360,7 +335,7 @@ class Missile(LayeredSprite):
 class Enemy(Missile):
     speedRange = [0.5, 1]
     explosionClass = EnemyExplosion
-    COLOR = COLOR_RED
+    COLOR = config.COLOR_RED
     
     def __init__(self, initPoint, targetObj, level):
         self.__level = level
@@ -373,10 +348,10 @@ class Enemy(Missile):
         for exp in Explosion.filter(EmpExplosion):
             if sqdist(exp._node.pos, self.traj.pos2) < exp._node.r ** 2:
                     exp.addHit()
-                    if exp.hits == GREAT_HITS:
-                        TextFeedback(exp._node.pos, 'GREAT!', COLOR_BLUE)
-                    elif exp.hits == NUKE_HITS:
-                        TextFeedback(exp._node.pos, '** AWESOME **', COLOR_BLUE)
+                    if exp.hits == config.GREAT_HITS:
+                        TextFeedback(exp._node.pos, 'GREAT!', config.COLOR_BLUE)
+                    elif exp.hits == config.NUKE_HITS:
+                        TextFeedback(exp._node.pos, '** AWESOME **', config.COLOR_BLUE)
                     self.explode()
                     EmpCommand().getState('game').enemyDestroyed(self)
 
@@ -388,8 +363,8 @@ class Enemy(Missile):
         
 
     def getSpeedFactor(self):
-        if self.traj.pos2.y < ENEMY_FULLSPEED_Y:
-            myspeed =  float(self.traj.pos2.y) / ENEMY_FULLSPEED_Y / 2.0 + 0.5
+        if self.traj.pos2.y < config.ENEMY_FULLSPEED_Y:
+            myspeed =  float(self.traj.pos2.y) / config.ENEMY_FULLSPEED_Y / 2.0 + 0.5
         else:
             myspeed = 1
         
@@ -399,7 +374,7 @@ class Enemy(Missile):
 class TurretMissile(Missile):
     speedRange = [7, 8]
     explosionClass = EmpExplosion
-    COLOR = COLOR_BLUE
+    COLOR = config.COLOR_BLUE
 
     def __init__(self, initPoint, targetPoint, nuke=False):
         self.__isNuke = nuke
@@ -460,11 +435,11 @@ class Turret(Target):
         self.base = avg.PolygonNode(pos=((10,0), (0, 20), (20, 20)), fillopacity=1,
                 fillcolor=self.LIVES_COLORS[self.defaultLives], opacity=0,
                 parent=self._node)
-        self.__ammoGauge = Gauge(COLOR_BLUE, Gauge.LAYOUT_HORIZONTAL,
-            pos=(0, 25), size=(20, 5), opacity=0.5, parent=self._node)
+        self.__ammoGauge = Gauge(config.COLOR_BLUE, Gauge.LAYOUT_HORIZONTAL,
+                pos=(0, 25), size=(20, 5), opacity=0.5, parent=self._node)
         
         self.nukeAlert = avg.ImageNode(href='nuke_alert.png', pos=(0, 35),
-            opacity=0, parent=self._node)
+                opacity=0, parent=self._node)
         
         self.__ammo = ammo
         self.__initialAmmo = ammo
@@ -491,11 +466,11 @@ class Turret(Target):
     def __updateGauge(self):
         self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
         if self.__ammo == 5:
-            self.__ammoGauge.setColor(COLOR_RED)
+            self.__ammoGauge.setColor(config.COLOR_RED)
             engine.SoundManager.play('low_ammo.ogg')
-            TextFeedback(self._node.pos, 'Low ammo!', COLOR_RED)
+            TextFeedback(self._node.pos, 'Low ammo!', config.COLOR_RED)
         elif self.__ammo > 5:
-            self.__ammoGauge.setColor(COLOR_BLUE)
+            self.__ammoGauge.setColor(config.COLOR_BLUE)
         
     def getAmmo(self):
         return self.__ammo
@@ -548,13 +523,6 @@ class City(Target):
         super(City, self).__init__(slot, self._node)
 
 
-class GameWordsNode(avg.WordsNode):
-    def __init__(self, *args, **kwargs):
-        kwargs['font'] = 'uni 05_53'
-        kwargs['sensitive'] = False
-        super(GameWordsNode, self).__init__(*args, **kwargs)
-
-
 class Gauge(avg.DivNode):
     LAYOUT_VERTICAL='vertical'
     LAYOUT_HORIZONTAL='horizontal'
@@ -564,7 +532,7 @@ class Gauge(avg.DivNode):
         
         self.__layout = layout
         self.__level = avg.RectNode(size=self.size, opacity=0, fillopacity=1,
-            fillcolor=color, parent=self)
+                fillcolor=color, parent=self)
         avg.RectNode(size=self.size, color='ffffff', strokewidth=0.5, parent=self)
         
         self.__fval = 0
@@ -598,16 +566,19 @@ class Game(engine.FadeGameState):
     GAMESTATE_ULTRASPEED='ULTRA'
     
     def _init(self):
-        avg.LineNode(pos1=(0, RESOLUTION.y - INVALID_TARGET_Y_OFFSET),
-            pos2=(1280, RESOLUTION.y - INVALID_TARGET_Y_OFFSET), color='222222',
-            strokewidth=0.8, parent=self)
+        avg.LineNode(pos1=(0, config.RESOLUTION.y - config.INVALID_TARGET_Y_OFFSET),
+                pos2=(1280, config.RESOLUTION.y - config.INVALID_TARGET_Y_OFFSET),
+                color='222222', strokewidth=0.8, parent=self)
 
-        Target.initLayer(self)
-        Missile.initLayer(self)
-        Bonus.initLayer(self)
-        TextFeedback.initLayer(self)
-        Explosion.initLayer(self)
-        TouchFeedback.initLayer(self)
+        divPlayground = avg.DivNode(parent=self)
+        divTouchables = avg.DivNode(parent=self)
+
+        Target.initLayer(divPlayground)
+        Missile.initLayer(divPlayground)
+        TextFeedback.initLayer(divPlayground)
+        Explosion.initLayer(divPlayground)
+        TouchFeedback.initLayer(divPlayground)
+        Bonus.initLayer(divTouchables)
         
         self.gameData = {}
         self.nukeFired = False
@@ -617,32 +588,35 @@ class Game(engine.FadeGameState):
         self.__gameState = self.GAMESTATE_INITIALIZING
         self.__wave = 0
         
-        engine.SoundManager.allocate('touch.ogg')
         engine.SoundManager.allocate('buzz.ogg')
         
-        self.__scoreText = GameWordsNode(text='0', pos=(640, 100), alignment='center',
-            fontsize=50, opacity=0.5, parent=self)
-        self.__teaser = GameWordsNode(text='', pos=(640, 300), alignment='center',
-            fontsize=70, opacity=0.5, parent=self)
+        self.__scoreText = widgets.GameWordsNode(text='0', pos=(640, 100),
+                alignment='center', fontsize=50, opacity=0.5, parent=self)
+        self.__teaser = widgets.GameWordsNode(text='', pos=(640, 300),
+                alignment='center', fontsize=70, opacity=0.5, parent=self)
         
-        self.__ammoGauge = Gauge(COLOR_BLUE, Gauge.LAYOUT_VERTICAL,
-            pos=(20, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 350), size=(15, 300),
-            opacity=0.3, parent=self)
-        GameWordsNode(text='AMMO', pos=(17, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 45),
-            fontsize=8, opacity=0.5, parent=self)
+        self.__ammoGauge = Gauge(config.COLOR_BLUE, Gauge.LAYOUT_VERTICAL,
+                pos=(20, config.RESOLUTION.y - config.INVALID_TARGET_Y_OFFSET - 350),
+                size=(15, 300), opacity=0.3, parent=self)
+        widgets.GameWordsNode(text='AMMO',
+                pos=(17, config.RESOLUTION.y - config.INVALID_TARGET_Y_OFFSET - 45),
+                fontsize=8, opacity=0.5, parent=self)
         
-        self.__enemiesGauge = Gauge(COLOR_RED, Gauge.LAYOUT_VERTICAL,
-            pos=(RESOLUTION.x - 35, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 350),
-            size=(15, 300), opacity=0.3, parent=self)
-        GameWordsNode(text='ENMY',
-            pos=(RESOLUTION.x - 38, RESOLUTION.y - INVALID_TARGET_Y_OFFSET - 45), fontsize=8,
+        self.__enemiesGauge = Gauge(config.COLOR_RED, Gauge.LAYOUT_VERTICAL,
+                pos=(config.RESOLUTION.x - 35, config.RESOLUTION.y - \
+                    config.INVALID_TARGET_Y_OFFSET - 350),
+                size=(15, 300), opacity=0.3, parent=self)
+                
+        widgets.GameWordsNode(text='ENMY',
+            pos=(config.RESOLUTION.x - 38, config.RESOLUTION.y - \
+                config.INVALID_TARGET_Y_OFFSET - 45), fontsize=8,
             opacity=0.5, parent=self)
         
         self.registerBgTrack('game_loop.ogg', maxVolume=0.3)
 
         if DEBUG:
-            self.__debugArea = GameWordsNode(pos=(10,10), size=(300, 600), fontsize=8,
-                color='ffffff', opacity=0.7, parent=self)
+            self.__debugArea = widgets.GameWordsNode(pos=(10,10), size=(300, 600),
+                fontsize=8, color='ffffff', opacity=0.7, parent=self)
         
     def _preTransIn(self):
         self.reset()
@@ -668,37 +642,39 @@ class Game(engine.FadeGameState):
         
     def setNewGame(self):
         self.__wave = 0
-        self.__score = 0
+        self.setScore(0)
         
     def nextWave(self):
         Missile.speedMul = 1
         self.nukeFired = False
         self.__wave += 1
-        self.__enemiesToSpawn = self.__wave * ENEMIES_WAVE_MULT
+        self.__enemiesToSpawn = self.__wave * config.ENEMIES_WAVE_MULT
         self.__enemiesGone = 0
         self.gameData['initialEnemies'] = self.__enemiesToSpawn
 
-        slots = [Point2D(x * SLOT_WIDTH, RESOLUTION.y - 60)
-            for x in xrange(1, int(RESOLUTION.x / SLOT_WIDTH + 1))]
+        slots = [Point2D(x * config.SLOT_WIDTH, config.RESOLUTION.y - 60)
+                for x in xrange(1, int(config.RESOLUTION.x / config.SLOT_WIDTH + 1))]
+                
         random.shuffle(slots)
         
-        for i in xrange(0, TURRETS_AMOUNT):
-            Turret(slots.pop(), self.__wave * AMMO_WAVE_MULT)
+        for i in xrange(0, config.TURRETS_AMOUNT):
+            Turret(slots.pop(), self.__wave * config.AMMO_WAVE_MULT)
         
-        self.gameData['initialAmmo'] = self.__wave * AMMO_WAVE_MULT * TURRETS_AMOUNT
+        self.gameData['initialAmmo'] = self.__wave * config.AMMO_WAVE_MULT * \
+                config.TURRETS_AMOUNT
         self.gameData['initialCities'] = random.randrange(1, len(slots))
+        
         for c in xrange(0, self.gameData['initialCities']):
             City(slots.pop())
 
-        self.__ammoGauge.setColor(COLOR_BLUE)
+        self.__ammoGauge.setColor(config.COLOR_BLUE)
         self.__ammoGauge.setFVal(1)
         self.__enemiesGauge.setFVal(1)
 
         self.playTeaser('Wave %d' % self.__wave)
         self.__changeGameState(self.GAMESTATE_PLAYING)
         g_Log.trace(g_Log.APP, 'Entering wave %d: %s' % (
-                self.__wave, str(self.gameData))
-            )
+                self.__wave, str(self.gameData)))
     
     def playTeaser(self, text):
         self.__teaser.text = text
@@ -730,15 +706,15 @@ class Game(engine.FadeGameState):
     def _update(self, dt):
         if self.__gameState != self.GAMESTATE_INITIALIZING:
             if DEBUG:
-                ammoRatio = float(self.gameData['ammoFired']) / self.gameData['initialAmmo']
+                ammoRatio = float(
+                        self.gameData['ammoFired']) / self.gameData['initialAmmo']
                 self.__debugArea.text = (
-                    ('dt=%03dms ets=%d ar=%1.2f' % (dt,
-                        self.__enemiesToSpawn, ammoRatio)) + '<br/>' +
-                    str(self.gameData) + '<br/>' +
-                    str(Target.objects) + '<br/>' +
-                    '<br/>'.join(map(str, Missile.filter(Enemy))) + '<br/>' +
-                    '<br/>'.join(map(str, Missile.filter(TurretMissile)))
-                    )
+                        ('dt=%03dms ets=%d ar=%1.2f' % (dt,
+                            self.__enemiesToSpawn, ammoRatio)) + '<br/>' +
+                        str(self.gameData) + '<br/>' +
+                        str(Target.objects) + '<br/>' +
+                        '<br/>'.join(map(str, Missile.filter(Enemy))) + '<br/>' +
+                        '<br/>'.join(map(str, Missile.filter(TurretMissile))))
 
             Missile.update(dt)
             self.__checkGameStatus()
@@ -747,7 +723,7 @@ class Game(engine.FadeGameState):
     def _onTouch(self, event):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
         if turrets:
-            if event.pos.y < RESOLUTION.y - INVALID_TARGET_Y_OFFSET:
+            if event.pos.y < config.RESOLUTION.y - config.INVALID_TARGET_Y_OFFSET:
                 if len(turrets) > 1:
                     d = abs(turrets[0].getHitPos().x - event.pos.x)
                     selectedTurret = turrets[0]
@@ -763,15 +739,14 @@ class Game(engine.FadeGameState):
                 self.gameData['ammoFired'] += 1
                 self.updateAmmoGauge()
                 
-                TouchFeedback(event.pos, COLOR_BLUE)
-                engine.SoundManager.play('touch.ogg')
+                TouchFeedback(event.pos, config.COLOR_BLUE)
             else:
-                TouchFeedback(event.pos, COLOR_RED)
+                TouchFeedback(event.pos, config.COLOR_RED)
                 engine.SoundManager.play('buzz.ogg')
         else:
-            TouchFeedback(event.pos, COLOR_RED)
+            TouchFeedback(event.pos, config.COLOR_RED)
             engine.SoundManager.play('buzz.ogg')
-            TextFeedback(event.pos, 'AMMO DEPLETED!', COLOR_RED)
+            TextFeedback(event.pos, 'AMMO DEPLETED!', config.COLOR_RED)
     
     def _onKey(self, event):
         if DEBUG:
@@ -786,7 +761,7 @@ class Game(engine.FadeGameState):
                 self.updateAmmoGauge()
                 return True
             elif event.keystring == 'u':
-                Missile.speedMul = ULTRASPEED_MISSILE_MUL
+                Missile.speedMul = config.ULTRASPEED_MISSILE_MUL
                 self.__changeGameState(self.GAMESTATE_ULTRASPEED)
                 return True
             elif event.keystring == 'n':
@@ -802,6 +777,9 @@ class Game(engine.FadeGameState):
             elif event.keystring == 'k':
                 map(lambda o: o.explode(), Missile.filter(Enemy))
                 return True
+            elif event.keystring == 's':
+                self.addScore(5000)
+                return True
     
     def updateAmmoGauge(self):
         ammo = 0
@@ -811,21 +789,21 @@ class Game(engine.FadeGameState):
         fdammo = self.gameData['initialAmmo'] - ammo
         afv = 1 - float(fdammo) / self.gameData['initialAmmo']
         if afv < 0.2:
-            self.__ammoGauge.setColor(COLOR_RED)
+            self.__ammoGauge.setColor(config.COLOR_RED)
         self.__ammoGauge.setFVal(afv)
         
     def enemyDestroyed(self, enemy, target=None):
         self.__enemiesGone += 1
         self.__enemiesGauge.setFVal(
                 1 - float(self.__enemiesGone) /
-                self.gameData['initialEnemies']
-            )
+                self.gameData['initialEnemies'])
+                
         if target is None:
-            self.addScore(ENEMY_DESTROYED_SCORE)
+            self.addScore(config.ENEMY_DESTROYED_SCORE)
             self.gameData['enemiesDestroyed'] += 1
         else:
             if not target.isDead and target.hit():
-                TextFeedback(target.getHitPos(), 'BUSTED!', COLOR_RED)
+                TextFeedback(target.getHitPos(), 'BUSTED!', config.COLOR_RED)
                 # If we lose a turret, ammo stash sinks with it
                 self.updateAmmoGauge()
         
@@ -841,20 +819,20 @@ class Game(engine.FadeGameState):
         
         # Switch to ultraspeed if there's nothing the player can do
         if (self.__gameState == self.GAMESTATE_PLAYING and
-            self.__ammoGauge.getFVal() == 0 and
-            not Missile.filter(TurretMissile) and
-            not Explosion.filter(EmpExplosion)):
-                Missile.speedMul = ULTRASPEED_MISSILE_MUL
-                self.__changeGameState(self.GAMESTATE_ULTRASPEED)
+                self.__ammoGauge.getFVal() == 0 and
+                not Missile.filter(TurretMissile) and
+                not Explosion.filter(EmpExplosion)):
+            Missile.speedMul = config.ULTRASPEED_MISSILE_MUL
+            self.__changeGameState(self.GAMESTATE_ULTRASPEED)
 
     def __spawnEnemies(self):
         if (self.__enemiesToSpawn and Target.objects and
-            (self.__gameState == self.GAMESTATE_ULTRASPEED or 
+                (self.__gameState == self.GAMESTATE_ULTRASPEED or 
                 random.randrange(0, 100) <= self.__wave)):
-                    origin = Point2D(random.randrange(0, RESOLUTION.x), 0)
-                    target = random.choice(Target.objects)
-                    Enemy(origin, target, self.__wave)
-                    self.__enemiesToSpawn -= 1
+            origin = Point2D(random.randrange(0, config.RESOLUTION.x), 0)
+            target = random.choice(Target.objects)
+            Enemy(origin, target, self.__wave)
+            self.__enemiesToSpawn -= 1
     
     def __teaserTimer(self):
         g_Player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
@@ -866,20 +844,20 @@ class Game(engine.FadeGameState):
 
 class Results(engine.FadeGameState):
     def _init(self):
-        self.__resultHeader = GameWordsNode(
-            pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 140), alignment='center',
+        self.__resultHeader = widgets.GameWordsNode(alignment='center',
             fontsize=70, color='ff2222', parent=self)
         
-        self.__resultsParagraph = GameWordsNode(
-            pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 40), alignment='center',
-            fontsize=40, color='aaaaaa', parent=self)
+        self.__resultsParagraph = widgets.GameWordsNode(
+            pos=(config.RESOLUTION.x / 2, config.RESOLUTION.y / 2 - 40),
+            alignment='center', fontsize=40, color='aaaaaa', parent=self)
 
         self.registerBgTrack('results.ogg')
     
     def _preTransIn(self):
         self.__resultHeader.text = 'Wave %d results' % (
-                self.engine.getState('game').getLevel()
-            )
+                self.engine.getState('game').getLevel())
+        self.__resultHeader.pos = (config.RESOLUTION.x / 2,
+                config.RESULTS_ADDROW_DELAY, config.RESOLUTION.y / 2)
         self.__resultsParagraph.text = ''
     
     def _postTransIn(self):
@@ -893,77 +871,142 @@ class Results(engine.FadeGameState):
                     len(Target.filter(City)), 
                     gameState.gameData['initialCities'],
                 ),
-            'Cities bonus: %d' % (len(Target.filter(City)) * CITY_RESCUE_SCORE),
+            'Cities bonus: %d' % (len(Target.filter(City)) * config.CITY_RESCUE_SCORE),
         ]
         
         if self.engine.getState('game').nukeFired:
-            self.rows.append('EMP Missiles launched: %d' % gameState.gameData['ammoFired'])
+            self.rows.append('EMP Missiles launched: %d' %
+                    gameState.gameData['ammoFired'])
         else:
             self.rows.append(
                 'EMP Missiles launched: %d (%d%% accuracy)' % (
                         gameState.gameData['ammoFired'],
-                        self.__getAccuracy(),
-                    ),
-            )
+                        self.__getAccuracy()))
 
-        gameState.addScore(len(Target.filter(City)) * CITY_RESCUE_SCORE)
-        g_Player.setTimeout(RESULTS_ADDROW_DELAY, self.addResultRow)
+        gameState.addScore(len(Target.filter(City)) * config.CITY_RESCUE_SCORE)
+        avg.EaseInOutAnim(self.__resultHeader, 'y', config.RESULTS_ADDROW_DELAY / 2,
+                config.RESOLUTION.y / 2,
+                config.RESOLUTION.y / 2 - 140, False,
+                config.RESULTS_ADDROW_DELAY / 6, config.RESULTS_ADDROW_DELAY / 4,
+                None, self.__addResultRow).start()
     
     def returnToGame(self):
         self.engine.changeState('game')
-        
-    def addResultRow(self):
+    
+    def __addResultRow(self):
         row = self.rows[0]
         self.rows.remove(row)
         self.__resultsParagraph.text += row + '<br/>'
         
         if self.rows:
-            g_Player.setTimeout(RESULTS_ADDROW_DELAY, self.addResultRow)
+            g_Player.setTimeout(config.RESULTS_ADDROW_DELAY, self.__addResultRow)
         else:
-            g_Player.setTimeout(RESULTS_DELAY, self.returnToGame)
+            g_Player.setTimeout(config.RESULTS_DELAY, self.returnToGame)
     
     def __getAccuracy(self):
         mfired = self.engine.getState('game').gameData['ammoFired']
         if mfired == 0:
             return 0
         else:
-            return (
-                float(self.engine.getState('game').gameData['enemiesDestroyed']) /
-                self.engine.getState('game').gameData['ammoFired'] * 100
-                )
+            return (float(self.engine.getState('game').gameData['enemiesDestroyed']) /
+                    self.engine.getState('game').gameData['ammoFired'] * 100)
     
 class GameOver(engine.FadeGameState):
     def _init(self):
-        GameWordsNode(text='Game Over', pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 - 80),
-            alignment='center', fontsize=70, color='ff2222', parent=self)
-        self.__score = GameWordsNode(pos=(RESOLUTION.x / 2, RESOLUTION.y / 2 + 20),
-            alignment='center', fontsize=40, color='aaaaaa', parent=self)
-        self.__timeout = None
-    
+        widgets.GameWordsNode(text='Game Over', pos=(config.RESOLUTION.x / 2,
+                config.RESOLUTION.y / 2 - 80), alignment='center', fontsize=70,
+                color='ff2222', parent=self)
+        self.__score = widgets.GameWordsNode(pos=(config.RESOLUTION.x / 2,
+                config.RESOLUTION.y / 2 + 20), alignment='center', fontsize=40,
+                color='aaaaaa', parent=self)
+        
     def _preTransIn(self):
-        self.__score.text = 'Score: %d' % self.engine.getState('game').getScore()
+        score = self.engine.getState('game').getScore()
+        self.__score.text = 'Score: %d' % score
         
     def _postTransIn(self):
-        self.__timeout = g_Player.setTimeout(GAMEOVER_DELAY, self.__returnToMenu)
-    
-    def __returnToMenu(self):
-        self.__timeout = None
-        self.engine.changeState('menu')
-    
-class Menu(engine.FadeGameState):
-    def _init(self):
-        avg.ImageNode(href='logo.png', pos=(0, RESOLUTION.y - 562), parent=self)
+        db = EmpCommand().scoreDatabase
+        if not db.isFull() or db.data[-1].points < \
+                self.engine.getState('game').getScore():
+            print 'ELIGIBLE'
+            g_Player.setTimeout(config.GAMEOVER_DELAY / 2,
+                lambda: self.engine.changeState('hiscore'))
+        else:
+            print 'NOT'
+            g_Player.setTimeout(config.GAMEOVER_DELAY,
+                    lambda: self.engine.changeState('start'))
 
-        startText = GameWordsNode(text='Touch here to start', fontsize=30,
-            opacity=0.5, parent=self)
-        startText.pos = (RESOLUTION -
-            startText.getMediaSize() - Point2D(50, RESOLUTION.y / 2))
+
+class Hiscore(engine.FadeGameState):
+    TIMEOUT = 8000
+    def _init(self):
+        widgets.GameWordsNode(text='New hiscore!',
+                pos=(config.RESOLUTION.x / 2, 70), alignment='center', fontsize=70,
+                color='ff2222', parent=self)
+
+        self.__score = widgets.GameWordsNode(pos=(config.RESOLUTION.x / 2, 170),
+                alignment='center', fontsize=40, color='aaaaaa', parent=self)
+
+        self.__keyboard = widgets.Keyboard(self.__onKeyTouch, parent=self)
+        self.__keyboard.pos = ((config.RESOLUTION.x - self.__keyboard.size.x) / 2,
+                config.RESOLUTION.y - self.__keyboard.size.y - 100)
+
+        self.__playerName = widgets.PlayerName(parent=self)
+        self.__playerName.pos = ((config.RESOLUTION.x - self.__playerName.size.x) / 2,
+                240)
         
-        self.__startButton = avg.RectNode(pos=startText.pos - Point2D(10, 10),
-            size=startText.getMediaSize() + Point2D(10, 20), opacity=0, parent=self)
+        self.__timeout = None
         
+    def _preTransIn(self):
+        self.__score.text = 'Score: %d' % self.engine.getState('game').getScore()
+        self.__playerName.reset()
+        self.__resetTimeout()
+    
+    def __saveScore(self):
+        name = self.__playerName.text
+        if name == '':
+            name = '???'
+        
+        EmpCommand().scoreDatabase.addScore(
+                engine.ScoreEntry(name, self.engine.getState('game').getScore()))
+    
+    def __clearTimeout(self):
+        if self.__timeout is not None:
+            g_Player.clearInterval(self.__timeout)
+        
+    def __resetTimeout(self):
+        def fire():
+            self.__timeout = None
+            self.__saveScore()
+            self.engine.changeState('start')
+            
+        self.__clearTimeout()
+        self.__timeout = g_Player.setTimeout(self.TIMEOUT, fire)
+        
+    def __onKeyTouch(self, key):
+        self.__resetTimeout()
+        if key == '<':
+            self.__playerName.delete()
+        elif key == '#':
+            self.__saveScore()
+            self.__clearTimeout()
+            self.engine.changeState('start')
+        else:
+            self.__playerName.addChar(key)
+
+class Start(engine.FadeGameState):
+    def _init(self):
+        avg.ImageNode(href='logo.png', pos=(0, config.RESOLUTION.y - 562), parent=self)
+
+        rightPane = avg.DivNode(pos=(750, 100), parent=self)
+        
+        self.__startButton = widgets.StartButton(pos=(40, 0), parent=rightPane)
         self.__startButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-            self.__onStartGame)
+                self.__onStartGame)
+        
+        self.__hiscoreTab = widgets.HiscoreTab(
+                db=EmpCommand().scoreDatabase,
+                pos=(0, 350), parent=rightPane)
 
         self.registerBgTrack('theme.ogg')
         
@@ -971,26 +1014,37 @@ class Menu(engine.FadeGameState):
             self.__startButton.fillopacity = 0.1
 
         if self.engine.exitButton:
-            exitText = GameWordsNode(text='X', fontsize=60, color='444444', parent=self)
-            exitText.pos = Point2D(RESOLUTION.x - exitText.getMediaSize().x - 30, 30)
+            exitText = widgets.GameWordsNode(text='X', fontsize=60,
+                    color='444444', parent=self)
+            exitText.pos = Point2D(config.RESOLUTION.x - exitText.getMediaSize().x - 30,
+                    30)
             
             self.__exitButton = avg.RectNode(pos=exitText.pos - Point2D(20, 20),
-                size=exitText.getMediaSize() + Point2D(20, 30), opacity=0, parent=self)
+                    size=exitText.getMediaSize() + Point2D(20, 30),
+                    opacity=0, parent=self)
             
             if DEBUG:
                 self.__exitButton.fillopacity = 0.1
         
             self.__exitButton.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-                self.__onLeaveApp)
+                    self.__onLeaveApp)
     
     def _pause(self):
         self.__setButtonsActive(False)
     
     def _resume(self):
         self.__setButtonsActive(True)
-        
+        self.__hiscoreTab.refresh()
+    
+    def _preTransIn(self):
+        self.__hiscoreTab.refresh()
+        self.__startButton.start()
+
     def _postTransIn(self):
         self.__setButtonsActive(True)
+    
+    def _postTransOut(self):
+        self.__startButton.stop()
 
     def _onKey(self, event):
         if DEBUG:
@@ -998,6 +1052,9 @@ class Menu(engine.FadeGameState):
                 self.engine.changeState('game')
                 return True
 
+    def _update(self, dt):
+        self.__hiscoreTab.update(dt)
+        
     def __setButtonsActive(self, active):
         self.__startButton.sensitive = active
         if self.engine.exitButton:
@@ -1013,7 +1070,7 @@ class Menu(engine.FadeGameState):
         self.__setButtonsActive(False)
         self.engine.getState('game').setNewGame()
         self.engine.changeState('game')
-    
+
 
 class EmpCommand(engine.Engine):
     __metaclass__ = engine.Singleton
@@ -1026,20 +1083,22 @@ class EmpCommand(engine.Engine):
 
     def init(self):
         # If the program is called by an appchooser, change screen's resolution
-        global RESOLUTION
-        RESOLUTION = g_Player.getRootNode().size
+        config.RESOLUTION = g_Player.getRootNode().size
         
-        g_Log.trace(g_Log.APP, 'Setting resolution %s' % RESOLUTION)
+        g_Log.trace(g_Log.APP, 'Setting resolution %s' % config.RESOLUTION)
         if engine.USE_PYGAME_MIXER:
             g_Log.trace(g_Log.APP, 'Using pygame.mixer for audio FX')
         else:
             g_Log.trace(g_Log.APP, 'Using libavg sound nodes for audio FX')
         
+        engine.SoundManager.init(self._parentNode)
+
         self._parentNode.mediadir = AVGAppUtil.getMediaDir(__file__)
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
-            size=RESOLUTION, parent=self._parentNode)
+            size=config.RESOLUTION, parent=self._parentNode)
         
-        engine.SoundManager.init(self._parentNode)
+        self.scoreDatabase = engine.HiscoreDatabase(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)),'hiscore.dat'))
         
         engine.SoundManager.allocate('bonus_alert.ogg')
         engine.SoundManager.allocate('bonus_drop.ogg')
@@ -1057,18 +1116,19 @@ class EmpCommand(engine.Engine):
         engine.SoundManager.allocate('target_destroy.ogg', 5)
         engine.SoundManager.allocate('target_hit.ogg')
         
-        self.registerState('menu', Menu())
+        self.registerState('start', Start())
         self.registerState('game', Game())
         self.registerState('gameover', GameOver())
         self.registerState('results', Results())
+        self.registerState('hiscore', Hiscore())
         
-        self.bootstrap('menu')
+        self.bootstrap('start')
 
 if __name__ == '__main__':
     EmpCommand.exitButton = False
     if DEBUG:
         import cProfile
-        cProfile.run('EmpCommand.start(resolution=RESOLUTION)')
+        cProfile.run('EmpCommand.start(resolution=config.RESOLUTION)')
     else:
-        EmpCommand.start(resolution=RESOLUTION)
+        EmpCommand.start(resolution=config.RESOLUTION)
 
