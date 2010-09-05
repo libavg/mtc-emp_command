@@ -166,7 +166,6 @@ class HiscoreDatabase(object):
     def addScore(self, score, sync=True):
         self.__data.append(score)
         self.__data = sorted(self.__data, reverse=True)
-        print self.__data
 
         if sync:
             self.__dump()

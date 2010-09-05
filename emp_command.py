@@ -928,11 +928,9 @@ class GameOver(engine.FadeGameState):
         db = EmpCommand().scoreDatabase
         if not db.isFull() or db.data[-1].points < \
                 self.engine.getState('game').getScore():
-            print 'ELIGIBLE'
             g_Player.setTimeout(config.GAMEOVER_DELAY / 2,
                 lambda: self.engine.changeState('hiscore'))
         else:
-            print 'NOT'
             g_Player.setTimeout(config.GAMEOVER_DELAY,
                     lambda: self.engine.changeState('start'))
 
