@@ -2,17 +2,17 @@
 # -*- coding: utf-8 -*-
 
 # engine module: generic game engine based on libavg, AVGApp
-# Copyright (c) 2010 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+# Copyright (c) 2010-2011 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
 # 
-#    1. Redistributions of source code must retain the above copyright notice, this list of
-#       conditions and the following disclaimer.
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
 # 
-#    2. Redistributions in binary form must reproduce the above copyright notice, this list
-#       of conditions and the following disclaimer in the documentation and/or other materials
-#       provided with the distribution.
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+#    of conditions and the following disclaimer in the documentation and/or other
+#    materials provided with the distribution.
 # 
 # THIS SOFTWARE IS PROVIDED BY OXullo Intersecans ``AS IS'' AND ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
@@ -25,23 +25,24 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
 # The views and conclusions contained in the software and documentation are those of the
-# authors and should not be interpreted as representing official policies, either expressed
-# or implied, of OXullo Intersecans.
+# authors and should not be interpreted as representing official policies, either 
+# expressed or implied, of OXullo Intersecans.
+
 
 import os
 import pickle
 import atexit
 from libavg import avg, AVGApp
-import config
+import consts
 
-USE_PYGAME_MIXER = config.SOUND_PYGAME
+USE_PYGAME_MIXER = consts.SOUND_PYGAME
 
 if USE_PYGAME_MIXER:
     try:
         import pygame.mixer
-        pygame.mixer.init(frequency=config.SOUND_FREQUENCY,
-                buffer=config.SOUND_BUFFER_SIZE)
-        pygame.mixer.set_num_channels(config.SOUND_VOICES)
+        pygame.mixer.init(frequency=consts.SOUND_FREQUENCY,
+                buffer=consts.SOUND_BUFFER_SIZE)
+        pygame.mixer.set_num_channels(consts.SOUND_VOICES)
     except ImportError:
         USE_PYGAME_MIXER = False
 
@@ -55,22 +56,6 @@ class NotImplementedError(Exception):
 
 class EngineError(Exception):
     '''Generic engine error'''
-
-
-class Singleton(type):
-    '''
-    Singleton metaclass
-    
-    U{http://bloop.sourceforge.net/wiki/index.php/Singleton_Metaclass}
-    '''
-    def __init__(cls,name,bases,dic):
-        super(Singleton,cls).__init__(name,bases,dic)
-        cls.instance=None
- 
-    def __call__(cls,*args,**kw):
-        if cls.instance is None:
-            cls.instance=super(Singleton,cls).__call__(*args,**kw)
-        return cls.instance
 
 
 class SoundManager(object):
@@ -109,12 +94,12 @@ class SoundManager(object):
         mySound = cls.objects[fileName].pop(0)
         if not USE_PYGAME_MIXER:
             mySound.stop()
-        
+
         sc = mySound.play()
 
         if USE_PYGAME_MIXER and sc is None:
             g_Log.trace(g_Log.WARNING, 'Sound allocation failed: %s' % mySound)
-            
+
         cls.objects[fileName].append(mySound)
 
 
@@ -125,13 +110,13 @@ class ScoreEntry(object):
                     '(%s, %s)' % (points, type(points)))
         self.name = name
         self.points = points
-        
+
     def __cmp__(self, other):
         if type(other) != ScoreEntry:
             raise TypeError('Cannot compare ScoreEntry with %s' %
                 other.__class__.__name__)
         return cmp(self.points, other.points)
-    
+
     def __repr__(self):
         return '<%s: name=%s points=%d>' % (self.__class__.__name__,
                 self.name, self.points)
@@ -139,8 +124,9 @@ class ScoreEntry(object):
 
 class HiscoreDatabase(object):
     PICKLE_PROTO = 0
-    
+
     def __init__(self, dataFile, maxSize=20):
+        dataFile = os.path.join(getScratchAreaPath(), dataFile)
         self.__dataFile = dataFile
         self.__data = []
         self.__maxSize = maxSize
@@ -159,21 +145,21 @@ class HiscoreDatabase(object):
             g_Log.trace(g_Log.WARNING, 'Hiscore data unavailable, generating '
                     'random scores')
             self.fillShit()
-    
+
     def isFull(self):
         return len(self.__data) >= self.__maxSize
-        
+
     def addScore(self, score, sync=True):
         self.__data.append(score)
         self.__data = sorted(self.__data, reverse=True)
 
         if sync:
             self.__dump()
-    
+
     @property
     def data(self):
         return self.__data
-    
+
     def fillShit(self):
         import random
         rng = 'QWERTZUIOPASDFGHJKLYXCVBNM'
@@ -182,44 +168,44 @@ class HiscoreDatabase(object):
                     random.choice(rng) + \
                     random.choice(rng),
                     random.randrange(80, 300) * 50), sync=False)
-            
+
     def __load(self, fileName):
         try:
             f = open(fileName)
         except IOError:
             return False
-        
+
         try:
             self.__data = pickle.load(f)
         except:
             f.close()
             return False
-        
+
         f.close()
-        
+
         if len(self.__data) > self.__maxSize:
             g_Log.trace(g_Log.WARNING, 'Slicing score data, trashing %d records' % (
                     len(self.__data) - self.__maxSize))
             self.__data = self.__data[0:self.__maxSize]
-            
+
         return True
-        
+
     def __dump(self):
         if os.path.exists(self.__dataFile):
             try:
                 os.rename(self.__dataFile, self.__dataFile + '.bak')
             except OSError:
                 g_Log.trace(g_Log.WARNING, 'Cannot create hiscores backup')
-        
+
         try:
             f = open(self.__dataFile, 'wb')
         except IOError:
             g_Log.trace(g_Log.ERROR, 'Cannot safely save hiscores')
             return
-        
+
         pickle.dump(self.__data, f, self.PICKLE_PROTO)
         f.close()
-        g_Log.trace(g_Log.APP, 'Hiscore database dumped')
+        g_Log.trace(g_Log.APP, 'Hiscore database dumped to %s' % self.__dataFile)
 
 
 class GameState(avg.DivNode):
@@ -231,11 +217,11 @@ class GameState(avg.DivNode):
         self.engine = None
         self.opacity = 0
         self.sensitive = False
-    
+
     def registerEngine(self, engine):
         self.engine = engine
         self._init()
-        
+
     def registerBgTrack(self, fileName, maxVolume=1):
         self._bgTrack = SoundManager.getSample(fileName, loop=True)
         if USE_PYGAME_MIXER:
@@ -251,9 +237,13 @@ class GameState(avg.DivNode):
         if not self._isFrozen:
             self._onTouch(event)
 
-    def onKey(self, event):
+    def onKeyDown(self, event):
         if not self._isFrozen:
-            self._onKey(event)
+            self._onKeyDown(event)
+
+    def onKeyUp(self, event):
+        if not self._isFrozen:
+            self._onKeyUp(event)
 
     def enter(self):
         self.opacity = 1
@@ -261,37 +251,41 @@ class GameState(avg.DivNode):
         self.sensitive = True
         if self._bgTrack:
             self._bgTrack.play()
-    
+
     def leave(self):
         self.sensitive = False
         self._leave()
         self.opacity = 0
         if self._bgTrack:
             self._bgTrack.stop()
-    
+
     def _init(self):
         pass
 
     def _enter(self):
         pass
-    
+
     def _leave(self):
         pass
-    
+
     def _pause(self):
         pass
-    
+
     def _resume(self):
         pass
-        
+
     def _update(self, dt):
         pass
-        
+
     def _onTouch(self, event):
         pass
-    
-    def _onKey(self, event):
+
+    def _onKeyDown(self, event):
         pass
+
+    def _onKeyUp(self, event):
+        pass
+
 
 # Abstract
 class TransitionGameState(GameState):
@@ -302,7 +296,7 @@ class TransitionGameState(GameState):
         self._doTransIn(self.__postTransIn)
         if self._bgTrack:
             self._doBgTrackTransIn()
-    
+
     def leave(self):
         self.sensitive = False
         self._isFrozen = True
@@ -310,28 +304,28 @@ class TransitionGameState(GameState):
         self._doTransOut(self.__postTransOut)
         if self._bgTrack:
             self._doBgTrackTransOut()
-    
+
     def _doTransIn(self, postCb):
         raise NotImplementedError()
-    
+
     def _doTransOut(self, postCb):
         raise NotImplementedError()
-    
+
     def _doBgTrackTransIn(self):
         self._bgTrack.play()
-        
+
     def _doBgTrackTransOut(self):
         self._bgTrack.stop()
 
     def _preTransIn(self):
         pass
-    
+
     def _postTransIn(self):
         pass
-    
+
     def _preTransOut(self):
         pass
-    
+
     def _postTransOut(self):
         pass
 
@@ -339,7 +333,7 @@ class TransitionGameState(GameState):
         self._isFrozen = False
         self._postTransIn()
         self.sensitive = True
-    
+
     def __postTransOut(self):
         self._isFrozen = False
         self._postTransOut()
@@ -348,13 +342,13 @@ class TransitionGameState(GameState):
 class FadeGameState(TransitionGameState):
     def _doTransIn(self, postCb):
         avg.fadeIn(self, self.TRANS_DURATION, 1, postCb)
-    
+
     def _doTransOut(self, postCb):
         avg.fadeOut(self, self.TRANS_DURATION, postCb)
 
     def _doBgTrackTransIn(self):
         if USE_PYGAME_MIXER:
-            self._bgTrack.play(loops=-1, fade_ms=self.TRANS_DURATION)
+            self._bgTrack.play(loops= -1, fade_ms=self.TRANS_DURATION)
         else:
             self._bgTrack.volume = 0
             self._bgTrack.play()
@@ -370,53 +364,58 @@ class FadeGameState(TransitionGameState):
                     self._bgTrack.stop).start()
 
 
-class Engine(AVGApp):
+class Application(AVGApp):
     def __init__(self, *args, **kwargs):
         self.__registeredStates = {}
         self.__currentState = None
         self.__tickTimer = None
         self.__entryHandle = None
         self.__elapsedTime = 0
-        super(Engine, self).__init__(*args, **kwargs)
-    
+        self.screenResolution = g_Player.getScreenResolution()
+        super(Application, self).__init__(*args, **kwargs)
+
     def registerState(self, handle, state):
         g_Log.trace(g_Log.APP, 'Registering state %s: %s' % (handle, state))
         state.registerEngine(self)
         self.__registeredStates[handle] = state
         self._parentNode.appendChild(state)
-    
+
     def bootstrap(self, handle):
         if self.__currentState:
             raise EngineError('The game has been already bootstrapped')
-        
+
         self.__entryHandle = handle
-        
+
     def changeState(self, handle):
         if self.__entryHandle is None:
             raise EngineError('Game must be bootstrapped before changing its state')
-        
+
         newState = self.__getState(handle)
 
         if self.__currentState:
             self.__currentState.leave()
-            
+
         newState.enter()
         g_Log.trace(g_Log.APP, 'Changing state %s -> %s' % (self.__currentState,
                 newState))
 
         self.__currentState = newState
-    
+
     def getState(self, handle):
         return self.__getState(handle)
-            
+
     def onKeyDown(self, event):
         if self.__currentState:
-            self.__currentState.onKey(event)
-    
+            self.__currentState.onKeyDown(event)
+
+    def onKeyUp(self, event):
+        if self.__currentState:
+            self.__currentState.onKeyUp(event)
+
     def onTouch(self, event):
         if self.__currentState:
             self.__currentState.onTouch(event)
-    
+
     def _enter(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
                 self.onTouch)
@@ -426,25 +425,39 @@ class Engine(AVGApp):
             self.__currentState._resume()
         else:
             self.changeState(self.__entryHandle)
-    
+
     def _leave(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN,
                 avg.MOUSE | avg.TOUCH, None)
         g_Player.clearInterval(self.__tickTimer)
         self.__tickTimer = None
-        
+
         if self.__currentState:
             self.__currentState.leave()
             self.__currentState = None
-    
+
     def __getState(self, handle):
         if handle in self.__registeredStates:
             return self.__registeredStates[handle]
         else:
              raise EngineError('No state with handle %s' % handle)
-        
+
     def __onFrame(self):
         if self.__currentState:
             self.__currentState.update(g_Player.getFrameTime() - self.__elapsedTime)
 
         self.__elapsedTime = g_Player.getFrameTime()
+
+
+def getScratchAreaPath():
+    # TODO: bloze compatible
+    path = os.path.join(os.environ['HOME'], '.avg', consts.GAME_TAG)
+
+    try:
+        os.makedirs(path)
+    except OSError, e:
+        import errno
+        if e.errno != errno.EEXIST:
+            raise
+
+    return path

@@ -2,17 +2,17 @@
 # -*- coding: utf-8 -*-
 
 # EMP Command: a missile command multitouch clone
-# Copyright (c) 2010 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+# Copyright (c) 2010-2011 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
 # 
-#    1. Redistributions of source code must retain the above copyright notice, this list of
-#       conditions and the following disclaimer.
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
 # 
-#    2. Redistributions in binary form must reproduce the above copyright notice, this list
-#       of conditions and the following disclaimer in the documentation and/or other materials
-#       provided with the distribution.
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+#    of conditions and the following disclaimer in the documentation and/or other
+#    materials provided with the distribution.
 # 
 # THIS SOFTWARE IS PROVIDED BY OXullo Intersecans ``AS IS'' AND ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
@@ -25,15 +25,17 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # 
 # The views and conclusions contained in the software and documentation are those of the
-# authors and should not be interpreted as representing official policies, either expressed
-# or implied, of OXullo Intersecans.
+# authors and should not be interpreted as representing official policies, either 
+# expressed or implied, of OXullo Intersecans.
+
 
 import os
 import math
 from libavg import avg, Point2D
 
 import engine
-import config
+import consts
+
 
 class GameWordsNode(avg.WordsNode):
     def __init__(self, *args, **kwargs):
@@ -41,15 +43,19 @@ class GameWordsNode(avg.WordsNode):
         kwargs['sensitive'] = False
         super(GameWordsNode, self).__init__(*args, **kwargs)
 
+
 class Tri(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(Tri, self).__init__(*args, **kwargs)
 
-        self.pnode = avg.PolygonNode(pos=(
-            (self.width / 2, 0),
-            (0, self.height),
-            (self.width, self.height)
-        ), opacity=0, fillcolor=config.COLOR_RED, fillopacity=0.8, parent=self)
+        self.pnode = avg.PolygonNode(
+                pos=(
+                    (self.width / 2, 0),
+                    (0, self.height),
+                    (self.width, self.height)
+                ),
+                opacity=0, fillcolor=consts.COLOR_RED, fillopacity=0.8, parent=self)
+
 
 class StartButton(avg.DivNode):
 
@@ -58,7 +64,7 @@ class StartButton(avg.DivNode):
         super(StartButton, self).__init__(*args, **kwargs)
 
         GameWordsNode(text='Play', pos=(135, 110),
-            fontsize=50, color=config.COLOR_RED, alignment='center', parent=self)
+                fontsize=50, color=consts.COLOR_RED, alignment='center', parent=self)
             
         anims = []
         for i in xrange(32):
@@ -75,6 +81,7 @@ class StartButton(avg.DivNode):
     def stop(self):
         self.__triAnim.abort()
 
+
 class HiscoreTab(avg.DivNode):
     SPEED_FACTOR = 20
     MAX_SPEED = 6
@@ -87,9 +94,11 @@ class HiscoreTab(avg.DivNode):
         self.width = 350
         self.height = 200
         
-        GameWordsNode(fontsize=20, text='HALL OF FAME', color=config.COLOR_RED, size=(self.width, 20),
-            pos=(self.width / 2, 0), alignment='center', parent=self)
-        avg.LineNode(pos1=(0, 20), pos2=(self.width, 20), strokewidth=1, color=config.COLOR_BLUE, parent=self)
+        GameWordsNode(fontsize=20, text='HALL OF FAME', color=consts.COLOR_RED,
+                size=(self.width, 20),
+                pos=(self.width / 2, 0), alignment='center', parent=self)
+        avg.LineNode(pos1=(0, 20), pos2=(self.width, 20), strokewidth=1,
+                color=consts.COLOR_BLUE, parent=self)
         
         self.__mask = avg.DivNode(parent=self, y=25, crop=True)
         self.__stage = avg.DivNode(parent=self.__mask)
@@ -124,11 +133,12 @@ class HiscoreTab(avg.DivNode):
         for s in self.db.data:
             y = pos * 40
             col1 = GameWordsNode(fontsize=20, text=self.toCardinal(pos + 1),
-                pos=(5, y+4), parent=self.__stage)
+                    pos=(5, y+4), parent=self.__stage)
             col2 = GameWordsNode(fontsize=35, text=s.name, pos=(75, y),
-                color=config.COLOR_BLUE, parent=self.__stage)
-            col3 = GameWordsNode(fontsize=28, text=str(s.points), alignment='right', color=config.COLOR_RED,
-                pos=(345, y+2), parent=self.__stage)
+                    color=consts.COLOR_BLUE, parent=self.__stage)
+            col3 = GameWordsNode(fontsize=28, text=str(s.points), alignment='right',
+                    color=consts.COLOR_RED,
+                    pos=(345, y+2), parent=self.__stage)
             
             self.__nodes += [col1, col2, col3]
             pos += 1
@@ -176,6 +186,7 @@ class HiscoreTab(avg.DivNode):
             self.__initialTouchPos = None
             self.__scrollLock = False
 
+
 class Key(avg.DivNode):
     def __init__(self, char, cb, *args, **kwargs):
         super(Key, self).__init__(*args, **kwargs)
@@ -183,11 +194,11 @@ class Key(avg.DivNode):
         self.__cb = cb
         self.__capturedId = None
         
-        self.__bg = avg.RectNode(size=self.size, opacity=0, fillcolor=config.COLOR_BLUE,
-            fillopacity=1, parent=self)
+        self.__bg = avg.RectNode(size=self.size, opacity=0, fillcolor=consts.COLOR_BLUE,
+                fillopacity=1, parent=self)
         self.__wnode = GameWordsNode(pos=(self.width / 2 + 4, self.height / 2 - 28),
-            alignment='center', fontsize=50, color=config.COLOR_RED,
-            rawtextmode=True, parent=self)
+                alignment='center', fontsize=50, color=consts.COLOR_RED,
+                rawtextmode=True, parent=self)
         
         if char == '#':
             self.__wnode.text = 'OK'
@@ -203,16 +214,17 @@ class Key(avg.DivNode):
         if self.__capturedId is None:
             self.setEventCapture(event.cursorid)
             self.__capturedId = event.cursorid
-            self.__bg.fillcolor = config.COLOR_RED
-            self.__wnode.color = config.COLOR_BLUE
+            self.__bg.fillcolor = consts.COLOR_RED
+            self.__wnode.color = consts.COLOR_BLUE
     
     def __onTouchUp(self, event):
         if self.__capturedId == event.cursorid:
-            self.__bg.fillcolor = config.COLOR_BLUE
-            self.__wnode.color = config.COLOR_RED
+            self.__bg.fillcolor = consts.COLOR_BLUE
+            self.__wnode.color = consts.COLOR_RED
             self.__capturedId = None
             self.releaseEventCapture(event.cursorid)
             self.__cb(self.__char)
+
 
 class Keyboard(avg.DivNode):
     KEY_DIM = 60
@@ -234,7 +246,7 @@ class Keyboard(avg.DivNode):
             x = r[1]
             for c in r[0]:
                 Key(c, self.__onKeyPressed, pos=(x, y), size=(self.KEY_DIM, self.KEY_DIM),
-                    parent=self)
+                        parent=self)
                 x += self.KEY_DIM + self.PADDING
                 maxx = max(x, maxx)
             y += self.KEY_DIM + self.PADDING
@@ -252,16 +264,17 @@ class Keyboard(avg.DivNode):
             
     def __onKeyPressed(self, key):
         self.__cb(key)
-        
+
+
 class PlayerName(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(PlayerName, self).__init__(*args, **kwargs)
         self.size = Point2D(450, 150)
 
-        self.__name = GameWordsNode(fontsize=150, color=config.COLOR_RED, text='',
-            alignment='center', pos=(self.size.x / 2, 0), parent=self)
+        self.__name = GameWordsNode(fontsize=150, color=consts.COLOR_RED, text='',
+                alignment='center', pos=(self.size.x / 2, 0), parent=self)
         avg.LineNode(pos1=(0, self.size.y-1), pos2=(self.size.x, self.size.y-1),
-            color=config.COLOR_RED, strokewidth=2, parent=self)
+                color=consts.COLOR_RED, strokewidth=2, parent=self)
 
     def reset(self):
         self.__name.text = ''
@@ -277,3 +290,39 @@ class PlayerName(avg.DivNode):
     @property
     def text(self):
         return self.__name.text
+
+
+class Gauge(avg.DivNode):
+    LAYOUT_VERTICAL='vertical'
+    LAYOUT_HORIZONTAL='horizontal'
+
+    def __init__(self, color, layout, *args, **kwargs):
+        super(Gauge, self).__init__(*args, **kwargs)
+
+        self.__layout = layout
+        self.__level = avg.RectNode(size=self.size, opacity=0, fillopacity=1,
+                fillcolor=color, parent=self)
+        avg.RectNode(size=self.size, color='ffffff', strokewidth=0.5, parent=self)
+
+        self.__fval = 0
+
+    def getFVal(self):
+        return self.__fval
+
+    def setFVal(self, fv):
+        if fv > 1:
+            fv = 1
+        elif fv < 0:
+            fv = 0
+
+        if self.__layout == self.LAYOUT_VERTICAL:
+            self.__level.pos = Point2D(0, self.size.y * (1 - fv))
+            self.__level.size = self.size - Point2D(0, self.__level.pos.y)
+        elif self.__layout == self.LAYOUT_HORIZONTAL:
+            self.__level.pos = Point2D(0, 0)
+            self.__level.size = Point2D(self.size.x * fv, self.size.y)
+
+        self.__fval = fv
+
+    def setColor(self, color):
+        self.__level.fillcolor = color

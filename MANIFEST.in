@@ -1,0 +1,2 @@
+recursive-include empcommand/media *
+recursive-include empcommand/fonts *
