@@ -58,9 +58,11 @@ class Tri(avg.DivNode):
 
 
 class StartButton(avg.DivNode):
-
+    WIDTH = 270
+    HEIGHT = 270
+    
     def __init__(self, *args, **kwargs):
-        kwargs['size'] = (270, 270)
+        kwargs['size'] = (self.WIDTH, self.HEIGHT)
         super(StartButton, self).__init__(*args, **kwargs)
 
         GameWordsNode(text='Play', pos=(135, 110),
@@ -85,14 +87,17 @@ class StartButton(avg.DivNode):
 class HiscoreTab(avg.DivNode):
     SPEED_FACTOR = 20
     MAX_SPEED = 6
+    WIDTH = 360
+    HEIGHT = 300
     
     def __init__(self, db, *args, **kwargs):
         super(HiscoreTab, self).__init__(*args, **kwargs)
         self.db = db
         self.__nodes = []
+        self.crop = True
         
-        self.width = 350
-        self.height = 200
+        self.width = self.WIDTH
+        self.height = self.HEIGHT
         
         GameWordsNode(fontsize=20, text='HALL OF FAME', color=consts.COLOR_RED,
                 size=(self.width, 20),
@@ -326,3 +331,17 @@ class Gauge(avg.DivNode):
 
     def setColor(self, color):
         self.__level.fillcolor = color
+
+
+class CrossHair(avg.DivNode):
+    def __init__(self, *args, **kwargs):
+        super(CrossHair, self).__init__(*args, **kwargs)
+        self.sensitive = False
+        
+        self.__l1 = avg.LineNode(pos1=(10, 0), pos2=(10, 20), strokewidth=4, parent=self)
+        self.__l2 = avg.LineNode(pos1=(0, 10), pos2=(20, 10), strokewidth=4, parent=self)
+        
+        self.getParent().setEventHandler(avg.CURSORMOTION, avg.MOUSE, self.__move)
+        
+    def __move(self, e):
+        self.pos = e.pos - Point2D(8, 8)

@@ -126,7 +126,7 @@ class HiscoreDatabase(object):
     PICKLE_PROTO = 0
 
     def __init__(self, dataFile, maxSize=20):
-        dataFile = os.path.join(getScratchAreaPath(), dataFile)
+        dataFile = getScratchAreaPath(dataFile)
         self.__dataFile = dataFile
         self.__data = []
         self.__maxSize = maxSize
@@ -371,9 +371,20 @@ class Application(AVGApp):
         self.__tickTimer = None
         self.__entryHandle = None
         self.__elapsedTime = 0
-        self.screenResolution = g_Player.getScreenResolution()
         super(Application, self).__init__(*args, **kwargs)
 
+    @classmethod
+    def start(cls, *args, **kwargs):
+        if not 'resolution' in kwargs:
+            kwargs['resolution'] = g_Player.getScreenResolution()
+        
+        g_Log.trace(g_Log.APP, 'Setting resolution to: %s' % kwargs['resolution'])
+        
+        super(Application, cls).start(*args, **kwargs)
+    
+    def size(self):
+        return g_Player.getRootNode().size
+    
     def registerState(self, handle, state):
         g_Log.trace(g_Log.APP, 'Registering state %s: %s' % (handle, state))
         state.registerEngine(self)
@@ -449,7 +460,7 @@ class Application(AVGApp):
         self.__elapsedTime = g_Player.getFrameTime()
 
 
-def getScratchAreaPath():
+def getScratchAreaPath(fname):
     # TODO: bloze compatible
     path = os.path.join(os.environ['HOME'], '.avg', consts.GAME_TAG)
 
@@ -460,4 +471,4 @@ def getScratchAreaPath():
         if e.errno != errno.EEXIST:
             raise
 
-    return path
+    return os.path.join(path, fname)

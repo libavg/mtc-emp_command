@@ -41,7 +41,8 @@ g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
 
 __all__ = ['Explosion', 'Target', 'Missile', 'TextFeedback', 'TouchFeedback', 'Bonus',
-        'Turret', 'City', 'Enemy', 'TurretMissile', 'AmmoBonus', 'NukeBonus']
+        'Turret', 'City', 'Enemy', 'TurretMissile', 'AmmoBonus', 'NukeBonus',
+        'EmpExplosion']
 
 def sqdist(p1, p2):
     pd = p1 - p2

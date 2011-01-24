@@ -43,18 +43,14 @@ g_Log = avg.Logger.get()
 
 
 class EmpCommand(engine.Application):
-
-    multitouch = False
     exitButton = True
+    multitouch = True
+    
     def __init__(self, *args, **kwargs):
         avg.WordsNode.addFontDir(AVGAppUtil.getMediaDir(__file__, 'fonts'))
         super(EmpCommand, self).__init__(*args, **kwargs)
 
     def init(self):
-        # If the program is called by an appchooser, change screen's resolution
-        consts.RESOLUTION = g_Player.getRootNode().size
-
-        g_Log.trace(g_Log.APP, 'Setting resolution %s' % consts.RESOLUTION)
         if engine.USE_PYGAME_MIXER:
             g_Log.trace(g_Log.APP, 'Using pygame.mixer for audio FX')
         else:
@@ -64,9 +60,9 @@ class EmpCommand(engine.Application):
 
         self._parentNode.mediadir = AVGAppUtil.getMediaDir(__file__)
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
-            size=consts.RESOLUTION, parent=self._parentNode)
+                size=self.size(), parent=self._parentNode)
 
-        self.scoreDatabase = engine.HiscoreDatabase('hiscore.dat')
+        self.scoreDatabase = engine.HiscoreDatabase(consts.HISCORE_FILENAME)
 
         engine.SoundManager.allocate('bonus_alert.ogg')
         engine.SoundManager.allocate('bonus_drop.ogg')
@@ -89,5 +85,8 @@ class EmpCommand(engine.Application):
         self.registerState('gameover', states.GameOver())
         self.registerState('results', states.Results())
         self.registerState('hiscore', states.Hiscore())
-
+        
+        widgets.CrossHair(parent=self._parentNode)
+        
         self.bootstrap('start')
+        
