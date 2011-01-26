@@ -371,17 +371,57 @@ class Application(AVGApp):
         self.__tickTimer = None
         self.__entryHandle = None
         self.__elapsedTime = 0
+        self.__pointer = None
         super(Application, self).__init__(*args, **kwargs)
 
     @classmethod
     def start(cls, *args, **kwargs):
-        if not 'resolution' in kwargs:
+        import optparse
+
+        parser = optparse.OptionParser()
+        parser.add_option('-r', '--resolution', dest='resolution',
+                default=None, help='set an explicit resolution', metavar='WIDTHxHEIGHT')
+        parser.add_option('-w', '--windowed', dest='windowed', action='store_true',
+                default=False, help='run the game in a whindow')
+
+        (options, args) = parser.parse_args()
+
+        if options.resolution is not None:
+            import re
+            
+            m = re.match('^(\d+)x(\d+)$', options.resolution)
+            
+            if m is None:
+                sys.stderr.write('\n** ERROR: invalid resolution '
+                        'specification %s\n\n' % options.resolution)
+                parser.print_help()
+                sys.exit(1)
+            else:
+                kwargs['resolution'] = map(int, m.groups())
+        elif not 'resolution' in kwargs:
             kwargs['resolution'] = g_Player.getScreenResolution()
-        
+
+        if options.windowed:
+            if options.resolution is None:
+                sys.stderr.write('\n** ERROR: in windowed mode the resolution must be set\n\n')
+                parser.print_help()
+                sys.exit(1)
+            else:
+                if 'AVG_DEPLOY' in os.environ:
+                    del os.environ['AVG_DEPLOY']
+        else:
+            os.environ['AVG_DEPLOY'] = '1'
+
         g_Log.trace(g_Log.APP, 'Setting resolution to: %s' % kwargs['resolution'])
         
         super(Application, cls).start(*args, **kwargs)
     
+    def setupPointer(self, instance):
+        self._parentNode.appendChild(instance)
+        instance.sensitive = False
+        self.__pointer = instance
+        g_Player.showCursor(False)
+
     def size(self):
         return g_Player.getRootNode().size
     
@@ -426,10 +466,21 @@ class Application(AVGApp):
     def onTouch(self, event):
         if self.__currentState:
             self.__currentState.onTouch(event)
+        
+        if self.__pointer:
+            self.__pointer.opacity = 0
+            
+    def onMouseMotion(self, event):
+        if self.__pointer:
+            self.__pointer.opacity = 1
+            self.__pointer.pos = event.pos - self.__pointer.size / 2
 
     def _enter(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
                 self.onTouch)
+        self._parentNode.setEventHandler(avg.CURSORMOTION, avg.MOUSE,
+                self.onMouseMotion)
+        
         self.__tickTimer = g_Player.setOnFrameHandler(self.__onFrame)
 
         if self.__currentState:
@@ -440,6 +491,8 @@ class Application(AVGApp):
     def _leave(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN,
                 avg.MOUSE | avg.TOUCH, None)
+        self._parentNode.setEventHandler(avg.CURSORMOTION,
+                avg.MOUSE, None)
         g_Player.clearInterval(self.__tickTimer)
         self.__tickTimer = None
 

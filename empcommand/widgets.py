@@ -336,12 +336,7 @@ class Gauge(avg.DivNode):
 class CrossHair(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(CrossHair, self).__init__(*args, **kwargs)
-        self.sensitive = False
-        
         self.__l1 = avg.LineNode(pos1=(10, 0), pos2=(10, 20), strokewidth=4, parent=self)
         self.__l2 = avg.LineNode(pos1=(0, 10), pos2=(20, 10), strokewidth=4, parent=self)
-        
-        self.getParent().setEventHandler(avg.CURSORMOTION, avg.MOUSE, self.__move)
-        
-    def __move(self, e):
-        self.pos = e.pos - Point2D(8, 8)
+        self.size = (20, 20)
+

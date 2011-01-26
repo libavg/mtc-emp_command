@@ -140,7 +140,7 @@ class Game(engine.FadeGameState):
     def _init(self):
         avg.LineNode(pos1=(0, avg.appInstance.size().y -\
                 consts.INVALID_TARGET_Y_OFFSET),
-                pos2=(1280, avg.appInstance.size().y - consts.INVALID_TARGET_Y_OFFSET),
+                pos2=(avg.appInstance.size().x, avg.appInstance.size().y - consts.INVALID_TARGET_Y_OFFSET),
                 color='222222', strokewidth=0.8, parent=self)
 
         divPlayground = avg.DivNode(parent=self)

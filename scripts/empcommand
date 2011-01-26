@@ -45,46 +45,11 @@ except ImportError:
 from empcommand.app import EmpCommand
 from empcommand import consts
 
-import optparse
-
-parser = optparse.OptionParser()
-parser.add_option('-r', '--resolution', dest='resolution',
-        default=None, help='explicitly set this resolution', metavar='WIDTHxHEIGHT')
-parser.add_option('-w', '--windowed', dest='windowed', action='store_true',
-        default=False, help='run the game in a whindow')
-
-(options, args) = parser.parse_args()
-
-appArgs = {}
-
-if options.resolution is not None:
-    import re
-    
-    m = re.match('^(\d+)x(\d+)$', options.resolution)
-    
-    if m is None:
-        sys.stderr.write('\n** ERROR: invalid resolution '
-                'specification %s\n\n' % options.resolution)
-        parser.print_help()
-        sys.exit(1)
-    else:
-        appArgs['resolution'] = map(int, m.groups())
-
-if options.windowed:
-    if options.resolution is None:
-        sys.stderr.write('\n** ERROR: in windowed mode the resolution must be set\n\n')
-        parser.print_help()
-        sys.exit(1)
-    else:
-        if 'AVG_DEPLOY' in os.environ:
-            del os.environ['AVG_DEPLOY']
-else:
-    os.environ['AVG_DEPLOY'] = '1'
-
 
 if __name__ == '__main__':
     if consts.ENABLE_PROFILING:
         import cProfile
-        cProfile.run('EmpCommand.start(**appArgs)')
+        cProfile.run('EmpCommand.start()')
     else:
-        EmpCommand.start(**appArgs)
+        EmpCommand.start()
+

@@ -85,8 +85,7 @@ class EmpCommand(engine.Application):
         self.registerState('gameover', states.GameOver())
         self.registerState('results', states.Results())
         self.registerState('hiscore', states.Hiscore())
-        
-        widgets.CrossHair(parent=self._parentNode)
-        
+
+        self.setupPointer(widgets.CrossHair())        
         self.bootstrap('start')
         
