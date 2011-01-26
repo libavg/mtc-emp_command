@@ -467,7 +467,7 @@ class Application(AVGApp):
         if self.__currentState:
             self.__currentState.onTouch(event)
         
-        if self.__pointer:
+        if event.source == avg.TOUCH and self.__pointer:
             self.__pointer.opacity = 0
             
     def onMouseMotion(self, event):
