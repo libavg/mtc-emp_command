@@ -32,7 +32,8 @@
 import os
 import pickle
 import atexit
-from libavg import avg, AVGApp
+from libavg import avg
+import gameapp
 import consts
 
 USE_PYGAME_MIXER = consts.SOUND_PYGAME
@@ -126,7 +127,7 @@ class HiscoreDatabase(object):
     PICKLE_PROTO = 0
 
     def __init__(self, dataFile, maxSize=20):
-        dataFile = getScratchAreaPath(dataFile)
+        dataFile = gameapp.app().getUserdataPath(dataFile)
         self.__dataFile = dataFile
         self.__data = []
         self.__maxSize = maxSize
@@ -134,13 +135,19 @@ class HiscoreDatabase(object):
 
         g_Log.trace(g_Log.APP, 'Initializing hiscore database %s' % dataFile)
 
-        if not self.__load(dataFile) and os.path.exists(dataFile + '.bak'):
-            if not self.__load(dataFile + '.bak'):
-                g_Log.trace(g_Log.ERROR,
-                        'Cannot recover hiscore data, starting from scratch')
+        if not self.__load(dataFile):
+            if os.path.exists(dataFile + '.bak'):
+                if self.__load(dataFile + '.bak'):
+                    g_Log.trace(g_Log.WARNING,
+                            'Hiscore data file is unreadable, using backup')
+                else:
+                    g_Log.trace(g_Log.ERROR,
+                            'Cannot recover hiscore data, starting from scratch')
+                    self.fillShit()
             else:
-                g_Log.trace(g_Log.WARNING,
-                        'Hiscore data file is unreadable, using backup')
+                    g_Log.trace(g_Log.ERROR,
+                            'Cannot recover hiscore data, starting from scratch')
+                    self.fillShit()
         elif not os.path.exists(dataFile):
             g_Log.trace(g_Log.WARNING, 'Hiscore data unavailable, generating '
                     'random scores')
@@ -183,7 +190,9 @@ class HiscoreDatabase(object):
 
         f.close()
 
-        if len(self.__data) > self.__maxSize:
+        if len(self.__data) == 0:
+            return False
+        elif len(self.__data) > self.__maxSize:
             g_Log.trace(g_Log.WARNING, 'Slicing score data, trashing %d records' % (
                     len(self.__data) - self.__maxSize))
             self.__data = self.__data[0:self.__maxSize]
@@ -364,7 +373,7 @@ class FadeGameState(TransitionGameState):
                     self._bgTrack.stop).start()
 
 
-class Application(AVGApp):
+class Application(gameapp.GameApp):
     def __init__(self, *args, **kwargs):
         self.__registeredStates = {}
         self.__currentState = None
@@ -374,48 +383,7 @@ class Application(AVGApp):
         self.__pointer = None
         super(Application, self).__init__(*args, **kwargs)
 
-    @classmethod
-    def start(cls, *args, **kwargs):
-        import optparse
 
-        parser = optparse.OptionParser()
-        parser.add_option('-r', '--resolution', dest='resolution',
-                default=None, help='set an explicit resolution', metavar='WIDTHxHEIGHT')
-        parser.add_option('-w', '--windowed', dest='windowed', action='store_true',
-                default=False, help='run the game in a whindow')
-
-        (options, args) = parser.parse_args()
-
-        if options.resolution is not None:
-            import re
-            
-            m = re.match('^(\d+)x(\d+)$', options.resolution)
-            
-            if m is None:
-                sys.stderr.write('\n** ERROR: invalid resolution '
-                        'specification %s\n\n' % options.resolution)
-                parser.print_help()
-                sys.exit(1)
-            else:
-                kwargs['resolution'] = map(int, m.groups())
-        elif not 'resolution' in kwargs:
-            kwargs['resolution'] = g_Player.getScreenResolution()
-
-        if options.windowed:
-            if options.resolution is None:
-                sys.stderr.write('\n** ERROR: in windowed mode the resolution must be set\n\n')
-                parser.print_help()
-                sys.exit(1)
-            else:
-                if 'AVG_DEPLOY' in os.environ:
-                    del os.environ['AVG_DEPLOY']
-        else:
-            os.environ['AVG_DEPLOY'] = '1'
-
-        g_Log.trace(g_Log.APP, 'Setting resolution to: %s' % kwargs['resolution'])
-        
-        super(Application, cls).start(*args, **kwargs)
-    
     def setupPointer(self, instance):
         self._parentNode.appendChild(instance)
         instance.sensitive = False
@@ -424,12 +392,12 @@ class Application(AVGApp):
 
     def size(self):
         return g_Player.getRootNode().size
-    
+
     def registerState(self, handle, state):
         g_Log.trace(g_Log.APP, 'Registering state %s: %s' % (handle, state))
+        self._parentNode.appendChild(state)
         state.registerEngine(self)
         self.__registeredStates[handle] = state
-        self._parentNode.appendChild(state)
 
     def bootstrap(self, handle):
         if self.__currentState:
@@ -466,10 +434,10 @@ class Application(AVGApp):
     def onTouch(self, event):
         if self.__currentState:
             self.__currentState.onTouch(event)
-        
+
         if event.source == avg.TOUCH and self.__pointer:
             self.__pointer.opacity = 0
-            
+
     def onMouseMotion(self, event):
         if self.__pointer:
             self.__pointer.opacity = 1
@@ -480,7 +448,7 @@ class Application(AVGApp):
                 self.onTouch)
         self._parentNode.setEventHandler(avg.CURSORMOTION, avg.MOUSE,
                 self.onMouseMotion)
-        
+
         self.__tickTimer = g_Player.setOnFrameHandler(self.__onFrame)
 
         if self.__currentState:
@@ -511,17 +479,3 @@ class Application(AVGApp):
             self.__currentState.update(g_Player.getFrameTime() - self.__elapsedTime)
 
         self.__elapsedTime = g_Player.getFrameTime()
-
-
-def getScratchAreaPath(fname):
-    # TODO: bloze compatible
-    path = os.path.join(os.environ['HOME'], '.avg', consts.GAME_TAG)
-
-    try:
-        os.makedirs(path)
-    except OSError, e:
-        import errno
-        if e.errno != errno.EEXIST:
-            raise
-
-    return os.path.join(path, fname)

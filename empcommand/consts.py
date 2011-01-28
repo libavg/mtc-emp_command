@@ -28,11 +28,11 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
+import os
 
-DEBUG = False
-ENABLE_PROFILING = False
+DEBUG = os.getenv('EMP_DEBUG', False)
+ENABLE_PROFILING = os.getenv('EMP_PROFILE', False)
 
-GAME_TAG = 'empcommand'
 HISCORE_FILENAME = 'hiscore.dat'
 
 

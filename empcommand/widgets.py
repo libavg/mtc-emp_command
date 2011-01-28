@@ -60,26 +60,26 @@ class Tri(avg.DivNode):
 class StartButton(avg.DivNode):
     WIDTH = 270
     HEIGHT = 270
-    
+
     def __init__(self, *args, **kwargs):
         kwargs['size'] = (self.WIDTH, self.HEIGHT)
         super(StartButton, self).__init__(*args, **kwargs)
 
         GameWordsNode(text='Play', pos=(135, 110),
                 fontsize=50, color=consts.COLOR_RED, alignment='center', parent=self)
-            
+
         anims = []
         for i in xrange(32):
-            tri = Tri(pos=(110, 215), size=(50,50), opacity=i/32.0, parent=self)
+            tri = Tri(pos=(110, 215), size=(50, 50), opacity=i / 32.0, parent=self)
             tri.pivot = Point2D(25, -80)
-            
+
             anims.append(avg.ContinuousAnim(tri, 'angle', math.pi / 16 * i, 2))
-        
+
         self.__triAnim = avg.ParallelAnim(anims)
-    
+
     def start(self):
         self.__triAnim.start()
-    
+
     def stop(self):
         self.__triAnim.abort()
 
@@ -89,27 +89,27 @@ class HiscoreTab(avg.DivNode):
     MAX_SPEED = 6
     WIDTH = 360
     HEIGHT = 300
-    
+
     def __init__(self, db, *args, **kwargs):
         super(HiscoreTab, self).__init__(*args, **kwargs)
         self.db = db
         self.__nodes = []
         self.crop = True
-        
+
         self.width = self.WIDTH
         self.height = self.HEIGHT
-        
+
         GameWordsNode(fontsize=20, text='HALL OF FAME', color=consts.COLOR_RED,
                 size=(self.width, 20),
                 pos=(self.width / 2, 0), alignment='center', parent=self)
         avg.LineNode(pos1=(0, 20), pos2=(self.width, 20), strokewidth=1,
                 color=consts.COLOR_BLUE, parent=self)
-        
+
         self.__mask = avg.DivNode(parent=self, y=25, crop=True)
         self.__stage = avg.DivNode(parent=self.__mask)
-        
+
         self.__panningAnim = None
-        
+
         self.__capturedCursorId = None
         self.__initialTouchPos = None
         self.__lastYSpeed = 0
@@ -117,7 +117,7 @@ class HiscoreTab(avg.DivNode):
         self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH, self.__onTouchDown)
         self.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, self.__onMotion)
         self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onTouchUp)
-    
+
     def toCardinal(self, num):
         if num % 10 == 1:
             return str(num) + 'st'
@@ -127,46 +127,46 @@ class HiscoreTab(avg.DivNode):
             return str(num) + 'rd'
         else:
             return str(num) + 'th'
-            
+
     def refresh(self):
         for n in self.__nodes:
             n.unlink(True)
-        
+
         self.__nodes = []
-        
+
         pos = 0
         for s in self.db.data:
             y = pos * 40
             col1 = GameWordsNode(fontsize=20, text=self.toCardinal(pos + 1),
-                    pos=(5, y+4), parent=self.__stage)
+                    pos=(5, y + 4), parent=self.__stage)
             col2 = GameWordsNode(fontsize=35, text=s.name, pos=(75, y),
                     color=consts.COLOR_BLUE, parent=self.__stage)
             col3 = GameWordsNode(fontsize=28, text=str(s.points), alignment='right',
                     color=consts.COLOR_RED,
-                    pos=(345, y+2), parent=self.__stage)
-            
+                    pos=(345, y + 2), parent=self.__stage)
+
             self.__nodes += [col1, col2, col3]
             pos += 1
-        
+
         self.__stage.height = pos * 40
         self.__stage.y = self.height
-    
+
     def update(self, dt):
         if self.__capturedCursorId is None and abs(self.__lastYSpeed) > 0.1:
             self.__stage.y += self.__lastYSpeed * self.SPEED_FACTOR
             self.__lastYSpeed /= 1.2
             self.__clampPan()
         elif not self.__scrollLock:
-            self.__stage.y -= 1.2 
-            if self.__stage.y < - self.__stage.height:
+            self.__stage.y -= 1.2
+            if self.__stage.y < -self.__stage.height:
                 self.__stage.y = self.height
 
     def __clampPan(self):
         if self.__stage.y > self.height:
             self.__stage.y = self.height
-        elif self.__stage.y < - self.__stage.height:
-            self.__stage.y = - self.__stage.height
-        
+        elif self.__stage.y < -self.__stage.height:
+            self.__stage.y = -self.__stage.height
+
     def __onTouchDown(self, event):
         if self.__capturedCursorId is None:
             self.__scrollLock = True
@@ -174,7 +174,7 @@ class HiscoreTab(avg.DivNode):
             self.__capturedCursorId = event.cursorid
             self.__initialTouchPos = event.pos
             self.__lastYSpeed = 0
-    
+
     def __onMotion(self, event):
         if self.__capturedCursorId:
             if abs(event.speed.y) > self.MAX_SPEED:
@@ -183,7 +183,7 @@ class HiscoreTab(avg.DivNode):
                 self.__lastYSpeed = event.speed.y
             self.__stage.y += event.speed.y * self.SPEED_FACTOR
             self.__clampPan()
-            
+
     def __onTouchUp(self, event):
         if self.__capturedCursorId:
             self.releaseEventCapture(self.__capturedCursorId)
@@ -198,30 +198,30 @@ class Key(avg.DivNode):
         self.__char = char
         self.__cb = cb
         self.__capturedId = None
-        
+
         self.__bg = avg.RectNode(size=self.size, opacity=0, fillcolor=consts.COLOR_BLUE,
                 fillopacity=1, parent=self)
         self.__wnode = GameWordsNode(pos=(self.width / 2 + 4, self.height / 2 - 28),
                 alignment='center', fontsize=50, color=consts.COLOR_RED,
                 rawtextmode=True, parent=self)
-        
+
         if char == '#':
             self.__wnode.text = 'OK'
             self.__wnode.fontsize = 30
             self.__wnode.y = self.height / 2 - 18
         else:
             self.__wnode.text = char
-        
+
         self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH, self.__onTouchDown)
         self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onTouchUp)
-    
+
     def __onTouchDown(self, event):
         if self.__capturedId is None:
             self.setEventCapture(event.cursorid)
             self.__capturedId = event.cursorid
             self.__bg.fillcolor = consts.COLOR_RED
             self.__wnode.color = consts.COLOR_BLUE
-    
+
     def __onTouchUp(self, event):
         if self.__capturedId == event.cursorid:
             self.__bg.fillcolor = consts.COLOR_BLUE
@@ -236,15 +236,15 @@ class Keyboard(avg.DivNode):
     PADDING = 15
     def __init__(self, cb, *args, **kwargs):
         super(Keyboard, self).__init__(*args, **kwargs)
-        
+
         self.__cb = cb
-        
+
         rows = [
             ['QWERTYUIOP<', 0],
             ['ASDFGHJKL#', (self.KEY_DIM + self.PADDING) / 2],
             ['ZXCVBNM ', self.KEY_DIM + self.PADDING]
         ]
-        
+
         maxx = maxy = 0
         y = 0
         for r in rows:
@@ -256,7 +256,7 @@ class Keyboard(avg.DivNode):
                 maxx = max(x, maxx)
             y += self.KEY_DIM + self.PADDING
             maxy = max(y, maxy)
-        
+
         self.size = Point2D(maxx, maxy)
 
     def setEnabled(self, enabled):
@@ -266,7 +266,7 @@ class Keyboard(avg.DivNode):
         else:
             self.opacity = 0
             self.sensitive = False
-            
+
     def __onKeyPressed(self, key):
         self.__cb(key)
 
@@ -278,16 +278,16 @@ class PlayerName(avg.DivNode):
 
         self.__name = GameWordsNode(fontsize=150, color=consts.COLOR_RED, text='',
                 alignment='center', pos=(self.size.x / 2, 0), parent=self)
-        avg.LineNode(pos1=(0, self.size.y-1), pos2=(self.size.x, self.size.y-1),
+        avg.LineNode(pos1=(0, self.size.y - 1), pos2=(self.size.x, self.size.y - 1),
                 color=consts.COLOR_RED, strokewidth=2, parent=self)
 
     def reset(self):
         self.__name.text = ''
-        
+
     def delete(self):
         if len(self.__name.text) > 0:
-            self.__name.text = self.__name.text[0:len(self.__name.text)-1]
-    
+            self.__name.text = self.__name.text[0:len(self.__name.text) - 1]
+
     def addChar(self, ch):
         if len(self.__name.text) < 3:
             self.__name.text += ch
@@ -298,8 +298,8 @@ class PlayerName(avg.DivNode):
 
 
 class Gauge(avg.DivNode):
-    LAYOUT_VERTICAL='vertical'
-    LAYOUT_HORIZONTAL='horizontal'
+    LAYOUT_VERTICAL = 'vertical'
+    LAYOUT_HORIZONTAL = 'horizontal'
 
     def __init__(self, color, layout, *args, **kwargs):
         super(Gauge, self).__init__(*args, **kwargs)

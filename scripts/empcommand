@@ -42,14 +42,10 @@ except ImportError:
         sys.stderr.write('ERROR: Cannot find empcommand package: reinstall the game.\n')
         sys.exit(1)
 
-from empcommand.app import EmpCommand
-from empcommand import consts
-
-
 if __name__ == '__main__':
-    if consts.ENABLE_PROFILING:
+    if empcommand.consts.ENABLE_PROFILING:
         import cProfile
-        cProfile.run('EmpCommand.start()')
+        cProfile.run('empcommand.EmpCommand.start()')
     else:
-        EmpCommand.start()
+        empcommand.EmpCommand.start()
 
