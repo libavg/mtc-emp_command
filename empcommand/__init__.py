@@ -28,7 +28,7 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
-
+import os
 from libavg import avg, AVGApp, Point2D, AVGAppUtil
 
 import engine
@@ -40,6 +40,9 @@ from gameapp import app
 
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
+
+__all__ = ['apps', 'EmpCommand']
+
 
 class EmpCommand(engine.Application):
     exitButton = True
@@ -81,3 +84,15 @@ class EmpCommand(engine.Application):
 
         self.setupPointer(widgets.CrossHair())
         self.bootstrap('start')
+
+
+def createPreviewNode(maxSize):
+    filename = os.path.join(AVGAppUtil.getMediaDir(__file__), 'preview.png')
+
+    return AVGAppUtilcreateImagePreviewNode(maxSize, absHref = filename)
+
+apps = (
+        {'class': EmpCommand,
+            'createPreviewNode': createPreviewNode},
+        )
+
