@@ -35,6 +35,7 @@ ENABLE_PROFILING = os.getenv('EMP_PROFILE', False)
 
 HISCORE_FILENAME = 'hiscore.dat'
 
+ORIGINAL_SIZE = (1280, 800)
 
 COLOR_BLUE = '0000ff'
 COLOR_RED = 'ff0000'

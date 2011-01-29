@@ -390,9 +390,16 @@ class Application(gameapp.GameApp):
         self.__pointer = instance
         g_Player.showCursor(False)
 
+    @property
     def size(self):
         return g_Player.getRootNode().size
 
+    def xnorm(self, value):
+        return int(value * self.size.x / float(consts.ORIGINAL_SIZE[0]))
+
+    def ynorm(self, value):
+        return int(value * self.size.y / float(consts.ORIGINAL_SIZE[1]))
+        
     def registerState(self, handle, state):
         g_Log.trace(g_Log.APP, 'Registering state %s: %s' % (handle, state))
         self._parentNode.appendChild(state)
@@ -420,6 +427,12 @@ class Application(gameapp.GameApp):
 
         self.__currentState = newState
 
+    def quit(self):
+        if gameapp.ownStarter:
+            g_Player.stop()
+        else:
+            self.leave()
+        
     def getState(self, handle):
         return self.__getState(handle)
 

@@ -33,6 +33,7 @@ import os
 import math
 from libavg import avg, Point2D
 
+from gameapp import app
 import engine
 import consts
 
@@ -41,8 +42,31 @@ class GameWordsNode(avg.WordsNode):
     def __init__(self, *args, **kwargs):
         kwargs['font'] = 'uni 05_53'
         kwargs['sensitive'] = False
+        if 'fontsize' in kwargs:
+            kwargs['fontsize'] = app().ynorm(kwargs['fontsize'])
         super(GameWordsNode, self).__init__(*args, **kwargs)
 
+
+class VLayout(avg.DivNode):
+    def __init__(self, interleave, width, *args, **kwargs):
+        super(VLayout, self).__init__(*args, **kwargs)
+        self.interleave = app().ynorm(interleave)
+        self.size = Point2D(width, 1)
+        self.yoffs = 0
+        self.objs = []
+    
+    def add(self, obj):
+        self.appendChild(obj)
+        self.objs.append(obj)
+        obj.y = self.yoffs
+        if obj.size != Point2D(0, 0):
+            objSize = obj.size
+        else:
+            objSize = obj.getMediaSize()
+            
+        self.yoffs += objSize.y + self.interleave
+        self.height = self.yoffs
+        
 
 class Tri(avg.DivNode):
     def __init__(self, *args, **kwargs):
@@ -57,38 +81,107 @@ class Tri(avg.DivNode):
                 opacity=0, fillcolor=consts.COLOR_RED, fillopacity=0.8, parent=self)
 
 
-class StartButton(avg.DivNode):
-    WIDTH = 270
-    HEIGHT = 270
+class MenuItem(avg.DivNode):
+    SCROLL_SPEED = 0.8
+    def __init__(self, text, width, cb, *args, **kwargs):
+        super(MenuItem, self).__init__(*args, **kwargs)
+        self.bg = avg.RectNode(opacity=0, fillopacity=0,
+                fillcolor=consts.COLOR_BLUE, parent=self)
 
-    def __init__(self, *args, **kwargs):
-        kwargs['size'] = (self.WIDTH, self.HEIGHT)
-        super(StartButton, self).__init__(*args, **kwargs)
+        self.wnode = GameWordsNode(text=text, fontsize=40, alignment='center',
+                color=consts.COLOR_RED, parent=self)
+        self.size = (width, self.wnode.getMediaSize().y)
+        self.bg.size = self.size
+        self.wnode.x = width / 2
+        self.cb = cb
+        self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
+                lambda e: self.executeCallback())
+        
+        self.curContainer = avg.DivNode(sensitive=False, parent=self)
+        avg.LineNode(pos1=(0, 0), pos2=(0, self.height), color=consts.COLOR_RED,
+                strokewidth=3, parent=self.curContainer)
+        
+        self.curState = 0
 
-        GameWordsNode(text='Play', pos=(135, 110),
-                fontsize=50, color=consts.COLOR_RED, alignment='center', parent=self)
+    def setActive(self, active):
+        if active:
+            self.bg.fillopacity = 0.2
+            self.curContainer.opacity = 1
+            self.curContainer.x = 0
+        else:
+            self.bg.fillopacity = 0
+            self.curContainer.opacity = 0
 
-        anims = []
-        for i in xrange(32):
-            tri = Tri(pos=(110, 215), size=(50, 50), opacity=i / 32.0, parent=self)
-            tri.pivot = Point2D(25, -80)
+    def update(self, dt):
+        if self.curState == 0:
+            self.curContainer.x += self.SCROLL_SPEED * dt
+            if self.curContainer.x > self.width:
+                self.curState = 1
+        else:
+            self.curContainer.x -= self.SCROLL_SPEED * dt
+            if self.curContainer.x < 0:
+                self.curState = 0
+            
+    def executeCallback(self):
+        engine.SoundManager.play('click.ogg')
+        self.cb()
 
-            anims.append(avg.ContinuousAnim(tri, 'angle', math.pi / 16 * i, 2))
 
-        self.__triAnim = avg.ParallelAnim(anims)
+class DifficultyMenuItem(MenuItem):
+    LABELS = ['Easy', 'Normal', 'Hard']
+    def __init__(self, width, cb, *args, **kwargs):
+        super(DifficultyMenuItem, self).__init__(text='X', width=width, cb=cb,
+                *args, **kwargs)
+        self.__lptr = 1
+        self.__setText()
+    
+    def executeCallback(self):
+        engine.SoundManager.play('click.ogg')
+        self.__lptr = (self.__lptr + 1) % 3
+        self.__setText()
+        self.cb(self.__lptr)
+    
+    def __setText(self):
+        self.wnode.text = self.LABELS[self.__lptr]
+        
 
-    def start(self):
-        self.__triAnim.start()
-
-    def stop(self):
-        self.__triAnim.abort()
-
+class Menu(avg.DivNode):
+    def __init__(self, onPlay, onAbout, onDiffChanged, onQuit, *args, **kwargs):
+        super(Menu, self).__init__(*args, **kwargs)
+        
+        self.layout = VLayout(interleave=10, width=self.width, parent=self)
+        self.layout.add(MenuItem(text='Play', width=self.width, cb=onPlay))
+        self.layout.add(DifficultyMenuItem(width=self.width, cb=onDiffChanged))
+        self.layout.add(MenuItem(text='About', width=self.width, cb=onAbout))
+        self.layout.add(MenuItem(text='Quit', width=self.width, cb=onQuit))
+        
+        self.setActive(0)
+    
+    def setActive(self, idx):
+        if idx == len(self.layout.objs) or idx < 0:
+            return
+            
+        for ob in self.layout.objs:
+            ob.setActive(False)
+        
+        self.layout.objs[idx].setActive(True)
+        self.__active = idx
+    
+    def update(self, dt):
+        self.layout.objs[self.__active].update(dt)
+        
+    def onKeyDown(self, event):
+        if event.keystring == 'down':
+            self.setActive(self.__active + 1)
+        elif event.keystring == 'up':
+            self.setActive(self.__active - 1)
+        elif event.keystring in ('return', 'space'):
+            self.layout.objs[self.__active].executeCallback()
+            
 
 class HiscoreTab(avg.DivNode):
     SPEED_FACTOR = 20
     MAX_SPEED = 6
-    WIDTH = 360
-    HEIGHT = 300
 
     def __init__(self, db, *args, **kwargs):
         super(HiscoreTab, self).__init__(*args, **kwargs)
@@ -96,16 +189,15 @@ class HiscoreTab(avg.DivNode):
         self.__nodes = []
         self.crop = True
 
-        self.width = self.WIDTH
-        self.height = self.HEIGHT
+        hdr = GameWordsNode(fontsize=20, text='HALL OF FAME', color=consts.COLOR_RED,
+                width=self.width, pos=(self.width / 2, 0), alignment='center',
+                parent=self)
 
-        GameWordsNode(fontsize=20, text='HALL OF FAME', color=consts.COLOR_RED,
-                size=(self.width, 20),
-                pos=(self.width / 2, 0), alignment='center', parent=self)
-        avg.LineNode(pos1=(0, 20), pos2=(self.width, 20), strokewidth=1,
-                color=consts.COLOR_BLUE, parent=self)
+        yp = hdr.getMediaSize().y + app().ynorm(5)
+        avg.LineNode(pos1=(0, yp), pos2=(self.width, yp),
+                strokewidth=1, color=consts.COLOR_BLUE, parent=self)
 
-        self.__mask = avg.DivNode(parent=self, y=25, crop=True)
+        self.__mask = avg.DivNode(parent=self, y=yp, crop=True)
         self.__stage = avg.DivNode(parent=self.__mask)
 
         self.__panningAnim = None
@@ -136,19 +228,20 @@ class HiscoreTab(avg.DivNode):
 
         pos = 0
         for s in self.db.data:
-            y = pos * 40
+            y = pos * app().ynorm(40)
             col1 = GameWordsNode(fontsize=20, text=self.toCardinal(pos + 1),
-                    pos=(5, y + 4), parent=self.__stage)
-            col2 = GameWordsNode(fontsize=35, text=s.name, pos=(75, y),
+                    pos=(app().xnorm(5), app().ynorm(y + 4)), parent=self.__stage)
+            col2 = GameWordsNode(fontsize=35, text=s.name,
+                    pos=(app().xnorm(75), app().ynorm(y)),
                     color=consts.COLOR_BLUE, parent=self.__stage)
             col3 = GameWordsNode(fontsize=28, text=str(s.points), alignment='right',
                     color=consts.COLOR_RED,
-                    pos=(345, y + 2), parent=self.__stage)
+                    pos=(app().xnorm(345), app().ynorm(y + 2)), parent=self.__stage)
 
             self.__nodes += [col1, col2, col3]
             pos += 1
 
-        self.__stage.height = pos * 40
+        self.__stage.height = pos * app().ynorm(40)
         self.__stage.y = self.height
 
     def update(self, dt):
@@ -340,3 +433,11 @@ class CrossHair(avg.DivNode):
         self.__l2 = avg.LineNode(pos1=(0, 10), pos2=(20, 10), strokewidth=4, parent=self)
         self.size = (20, 20)
 
+
+if __name__ == '__main__':
+    import libavg
+    class T(engine.Application):
+        def init(self):
+            m = Menu(parent=self._parentNode)
+    
+    T.start(resolution=(800, 600))

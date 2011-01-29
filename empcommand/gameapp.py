@@ -42,6 +42,9 @@ def app():
     global _app
     return _app
 
+
+ownStarter = False
+
 class GameApp(libavg.AVGApp):
     multitouch = True
 
@@ -91,8 +94,11 @@ class GameApp(libavg.AVGApp):
         else:
             os.environ['AVG_DEPLOY'] = '1'
 
-        g_Log.trace(g_Log.APP, 'Setting resolution to: %s' % kwargs['resolution'])
+        g_Log.trace(g_Log.APP, 'Setting resolution to: %s' % str(kwargs['resolution']))
 
+        global ownStarter
+        ownStarter = True
+        
         super(GameApp, cls).start(*args, **kwargs)
 
 

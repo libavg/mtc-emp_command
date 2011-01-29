@@ -56,7 +56,7 @@ class EmpCommand(engine.Application):
         engine.SoundManager.init(self._parentNode)
 
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
-                size=self.size(), parent=self._parentNode)
+                size=self.size, parent=self._parentNode)
 
         self.scoreDatabase = engine.HiscoreDatabase(consts.HISCORE_FILENAME)
 
@@ -77,6 +77,7 @@ class EmpCommand(engine.Application):
         engine.SoundManager.allocate('target_hit.ogg')
 
         self.registerState('start', states.Start())
+        self.registerState('about', states.About())
         self.registerState('game', states.Game())
         self.registerState('gameover', states.GameOver())
         self.registerState('results', states.Results())
