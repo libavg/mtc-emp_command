@@ -31,6 +31,7 @@
 
 import os
 import pickle
+import random
 import atexit
 from libavg import avg
 import gameapp
@@ -88,7 +89,7 @@ class SoundManager(object):
         cls.objects[fileName] = slst
 
     @classmethod
-    def play(cls, fileName):
+    def play(cls, fileName, randomVolume=False, volume=None):
         if not fileName in cls.objects:
             raise RuntimeError('Sound sample %s hasn\'t been allocated' % fileName)
 
@@ -96,6 +97,16 @@ class SoundManager(object):
         if not USE_PYGAME_MIXER:
             mySound.stop()
 
+        if volume is not None:
+            maxVol = volume
+        else:
+            maxVol = 1
+            
+        if randomVolume:
+            mySound.volume = random.uniform(0.2, maxVol)
+        elif volume is not None:
+            mySound.volume = volume
+        
         sc = mySound.play()
 
         if USE_PYGAME_MIXER and sc is None:

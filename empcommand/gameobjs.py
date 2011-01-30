@@ -43,7 +43,7 @@ g_Log = avg.Logger.get()
 
 __all__ = ['Explosion', 'Target', 'Missile', 'TextFeedback', 'TouchFeedback', 'Bonus',
         'Turret', 'City', 'Enemy', 'TurretMissile', 'AmmoBonus', 'NukeBonus',
-        'EmpExplosion']
+        'EmpExplosion', 'EnemyExplosion']
 
 def sqdist(p1, p2):
     pd = p1 - p2
@@ -60,6 +60,7 @@ class LayeredSprite(object):
 
 class Explosion(LayeredSprite):
     objects = []
+    cb = None
 
     def __init__(self, pos):
         self._node = avg.CircleNode(pos=pos, r=20, fillcolor=self.COLOR,
@@ -71,9 +72,12 @@ class Explosion(LayeredSprite):
         self.__anim.start()
 
         if self.SOUND:
-            engine.SoundManager.play(random.choice(self.SOUND))
+            engine.SoundManager.play(random.choice(self.SOUND), randomVolume=True)
 
         self.objects.append(self)
+        
+        if self.cb is not None:
+            self.cb()
 
     def _cleanup(self):
         self.__anim.abort()
@@ -84,6 +88,10 @@ class Explosion(LayeredSprite):
     @classmethod
     def filter(cls, subClass):
         return [t for t in cls.objects if isinstance(t, subClass)]
+    
+    @classmethod
+    def registerCallback(cls, cb):
+        cls.cb = cb
 
 
 class EmpExplosion(Explosion):
@@ -414,10 +422,10 @@ class Target(LayeredSprite):
         self.lives -= 1
         if self.lives == 0:
             self.destroy()
-            engine.SoundManager.play('target_destroy.ogg')
+            engine.SoundManager.play('target_destroy.ogg', randomVolume=True)
             return True
         else:
-            engine.SoundManager.play('target_hit.ogg')
+            engine.SoundManager.play('target_hit.ogg', randomVolume=True)
             return False
 
     def destroy(self):
@@ -468,7 +476,7 @@ class Turret(Target):
                 self.__ammo -= 1
                 self.__updateGauge()
                 TurretMissile(self._node.pos + Point2D(10, 0), pos)
-                engine.SoundManager.play('missile_launch.ogg')
+                engine.SoundManager.play('missile_launch.ogg', randomVolume=True)
                 return True
             else:
                 return False

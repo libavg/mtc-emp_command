@@ -31,6 +31,7 @@
 
 import os
 import math
+import random
 from libavg import avg, Point2D
 
 from gameapp import app
@@ -43,7 +44,7 @@ class GameWordsNode(avg.WordsNode):
         kwargs['font'] = 'uni 05_53'
         kwargs['sensitive'] = False
         if 'fontsize' in kwargs:
-            kwargs['fontsize'] = app().ynorm(kwargs['fontsize'])
+            kwargs['fontsize'] = max(app().ynorm(kwargs['fontsize']), 7)
         super(GameWordsNode, self).__init__(*args, **kwargs)
 
 
@@ -66,7 +67,7 @@ class VLayout(avg.DivNode):
             
         self.yoffs += objSize.y + self.interleave
         self.height = self.yoffs
-        
+
 
 class Tri(avg.DivNode):
     def __init__(self, *args, **kwargs):
@@ -166,6 +167,8 @@ class Menu(avg.DivNode):
         
         self.layout.objs[idx].setActive(True)
         self.__active = idx
+        
+        engine.SoundManager.play('selection.ogg', volume=0.5)
     
     def update(self, dt):
         self.layout.objs[self.__active].update(dt)
@@ -398,9 +401,11 @@ class Gauge(avg.DivNode):
         super(Gauge, self).__init__(*args, **kwargs)
 
         self.__layout = layout
+        self.__levelContainer = avg.DivNode(parent=self)
         self.__level = avg.RectNode(size=self.size, opacity=0, fillopacity=1,
-                fillcolor=color, parent=self)
-        avg.RectNode(size=self.size, color='ffffff', strokewidth=0.5, parent=self)
+                fillcolor=color, parent=self.__levelContainer)
+        avg.RectNode(size=self.size, color=color, strokewidth=1, 
+                parent=self.__levelContainer)
 
         self.__fval = 0
 
@@ -425,6 +430,14 @@ class Gauge(avg.DivNode):
     def setColor(self, color):
         self.__level.fillcolor = color
 
+    def setOpacity(self, opacity):
+        self.__levelContainer.opacity = opacity
+
+    def addLabel(self, text):
+        GameWordsNode(text=text, alignment='center', fontsize=8, color='ffffff',
+                pos=(self.size.x / 2, self.size.y + app().ynorm(5)),
+                opacity=0.8, parent=self)
+
 
 class CrossHair(avg.DivNode):
     def __init__(self, *args, **kwargs):
@@ -433,6 +446,18 @@ class CrossHair(avg.DivNode):
         self.__l2 = avg.LineNode(pos1=(0, 10), pos2=(20, 10), strokewidth=4, parent=self)
         self.size = (20, 20)
 
+
+class Clouds(avg.ImageNode):
+    def __init__(self, maxOpacity, *args, **kwargs):
+        kwargs['href'] = 'clouds.png'
+        super(Clouds, self).__init__(*args, **kwargs)
+        self.opacity = 0
+        self.maxOpacity = maxOpacity
+    
+    def blink(self):
+        def reset():
+            avg.fadeOut(self, 180)
+        avg.fadeIn(self, 80, random.uniform(0.05, self.maxOpacity), reset)
 
 if __name__ == '__main__':
     import libavg

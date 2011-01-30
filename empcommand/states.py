@@ -109,10 +109,33 @@ class Game(engine.FadeGameState):
     GAMESTATE_ULTRASPEED = 'ULTRA'
 
     def _init(self):
-        avg.LineNode(pos1=(0, app().size.y - \
-                consts.INVALID_TARGET_Y_OFFSET),
-                pos2=(app().size.x, app().size.y - consts.INVALID_TARGET_Y_OFFSET),
-                color='222222', strokewidth=0.8, parent=self)
+        # Sky
+        avg.ImageNode(href='enmy_sky.png', size=(app().size.x, app().ynorm(300)),
+                opacity=0.2, parent=self)
+        self.clouds = widgets.Clouds(maxOpacity=0.3, size=(app().size.x,
+                app().ynorm(600)), parent=self)
+        EnemyExplosion.registerCallback(self.clouds.blink)
+        
+        # Allied ground
+        a = app().xnorm(5)
+        b = app().ynorm(10)
+        c = app().xnorm(30)
+        d = app().ynorm(5)
+        avg.PolygonNode(
+                pos=(
+                    (-a, app().size.y - consts.INVALID_TARGET_Y_OFFSET + b),
+                    (c, app().size.y - consts.INVALID_TARGET_Y_OFFSET),
+                    (app().size.x - c, app().size.y - consts.INVALID_TARGET_Y_OFFSET),
+                    (app().size.x + a, app().size.y - consts.INVALID_TARGET_Y_OFFSET + b),
+                    (app().size.x + a, app().size.y + d),
+                    (-a, app().size.y + d),
+                ),
+                color=consts.COLOR_BLUE,
+                fillcolor=consts.COLOR_BLUE,
+                opacity=0.3,
+                fillopacity=0.05,
+                parent=self
+                )
 
         divPlayground = avg.DivNode(parent=self)
         divTouchables = avg.DivNode(parent=self)
@@ -135,31 +158,27 @@ class Game(engine.FadeGameState):
         engine.SoundManager.allocate('buzz.ogg')
 
         self.__scoreText = widgets.GameWordsNode(text='0',
-                pos=(app().size.x / 2, 100),
+                pos=(app().size.x / 2, app().ynorm(100)),
                 alignment='center', fontsize=50, opacity=0.5, parent=self)
         self.__teaser = widgets.GameWordsNode(text='',
-                pos=(app().size.x / 2, 300),
+                pos=(app().size.x / 2, app().ynorm(300)),
                 alignment='center', fontsize=70, opacity=0.5, parent=self)
 
         self.__ammoGauge = widgets.Gauge(consts.COLOR_BLUE,
                 widgets.Gauge.LAYOUT_VERTICAL,
-                pos=(20, app().size.y - consts.INVALID_TARGET_Y_OFFSET - 350),
-                size=(15, 300), opacity=0.3, parent=self)
-
-        widgets.GameWordsNode(text='AMMO',
-                pos=(17, app().size.y - consts.INVALID_TARGET_Y_OFFSET - 45),
-                fontsize=8, opacity=0.5, parent=self)
+                pos=(app().xnorm(20),
+                    app().size.y - consts.INVALID_TARGET_Y_OFFSET - app().ynorm(350)),
+                size=(app().xnorm(15), app().ynorm(300)), parent=self)
+        self.__ammoGauge.addLabel('AMMO')
+        self.__ammoGauge.setOpacity(0.3)
 
         self.__enemiesGauge = widgets.Gauge(consts.COLOR_RED,
                 widgets.Gauge.LAYOUT_VERTICAL,
-                pos=(app().size.x - 35, app().size.y - \
-                    consts.INVALID_TARGET_Y_OFFSET - 350),
-                size=(15, 300), opacity=0.3, parent=self)
-
-        widgets.GameWordsNode(text='ENMY',
-            pos=(app().size.x - 38, app().size.y - \
-                consts.INVALID_TARGET_Y_OFFSET - 45), fontsize=8,
-            opacity=0.5, parent=self)
+                pos=(app().size.x - app().xnorm(35), app().size.y - \
+                    consts.INVALID_TARGET_Y_OFFSET - app().ynorm(350)),
+                size=(app().xnorm(15), app().ynorm(300)), parent=self)
+        self.__enemiesGauge.addLabel('ENMY')
+        self.__enemiesGauge.setOpacity(0.3)
 
         self.registerBgTrack('game_loop.ogg', maxVolume=0.3)
 
@@ -211,7 +230,7 @@ class Game(engine.FadeGameState):
 
         self.gameData['initialAmmo'] = self.__wave * consts.AMMO_WAVE_MULT * \
                 consts.TURRETS_AMOUNT
-        self.gameData['initialCities'] = random.randrange(1, len(slots))
+        self.gameData['initialCities'] = consts.CITIES
 
         for c in xrange(0, self.gameData['initialCities']):
             City(slots.pop())
@@ -328,6 +347,9 @@ class Game(engine.FadeGameState):
                 return True
             elif event.keystring == 's':
                 self.addScore(5000)
+                return True
+            elif event.keystring == 'e':
+                self.clouds.blink()
                 return True
 
     def updateAmmoGauge(self):

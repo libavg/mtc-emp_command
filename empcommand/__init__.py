@@ -63,6 +63,7 @@ class EmpCommand(engine.Application):
         engine.SoundManager.allocate('bonus_alert.ogg')
         engine.SoundManager.allocate('bonus_drop.ogg')
         engine.SoundManager.allocate('click.ogg')
+        engine.SoundManager.allocate('selection.ogg')
         engine.SoundManager.allocate('emp.ogg', 5)
         engine.SoundManager.allocate('enemy_exp1.ogg', 2)
         engine.SoundManager.allocate('enemy_exp2.ogg', 2)
@@ -90,7 +91,7 @@ class EmpCommand(engine.Application):
 def createPreviewNode(maxSize):
     filename = os.path.join(AVGAppUtil.getMediaDir(__file__), 'preview.png')
 
-    return AVGAppUtilcreateImagePreviewNode(maxSize, absHref = filename)
+    return AVGAppUtil.createImagePreviewNode(maxSize, absHref = filename)
 
 apps = (
         {'class': EmpCommand,
