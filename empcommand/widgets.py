@@ -156,9 +156,9 @@ class Menu(avg.DivNode):
         self.layout.add(MenuItem(text='About', width=self.width, cb=onAbout))
         self.layout.add(MenuItem(text='Quit', width=self.width, cb=onQuit))
         
-        self.setActive(0)
+        self.setActive(0, fb=False)
     
-    def setActive(self, idx):
+    def setActive(self, idx, fb=True):
         if idx == len(self.layout.objs) or idx < 0:
             return
             
@@ -168,7 +168,8 @@ class Menu(avg.DivNode):
         self.layout.objs[idx].setActive(True)
         self.__active = idx
         
-        engine.SoundManager.play('selection.ogg', volume=0.5)
+        if fb:
+            engine.SoundManager.play('selection.ogg', volume=0.5)
     
     def update(self, dt):
         self.layout.objs[self.__active].update(dt)
@@ -184,6 +185,7 @@ class Menu(avg.DivNode):
 
 class HiscoreTab(avg.DivNode):
     SPEED_FACTOR = 20
+    SMOOTH_FACTOR = 1.2
     MAX_SPEED = 6
 
     def __init__(self, db, *args, **kwargs):
@@ -233,13 +235,13 @@ class HiscoreTab(avg.DivNode):
         for s in self.db.data:
             y = pos * app().ynorm(40)
             col1 = GameWordsNode(fontsize=20, text=self.toCardinal(pos + 1),
-                    pos=(app().xnorm(5), app().ynorm(y + 4)), parent=self.__stage)
+                    pos=app().pnorm(5, y + 4), parent=self.__stage)
             col2 = GameWordsNode(fontsize=35, text=s.name,
-                    pos=(app().xnorm(75), app().ynorm(y)),
+                    pos=app().pnorm(75, y),
                     color=consts.COLOR_BLUE, parent=self.__stage)
             col3 = GameWordsNode(fontsize=28, text=str(s.points), alignment='right',
                     color=consts.COLOR_RED,
-                    pos=(app().xnorm(345), app().ynorm(y + 2)), parent=self.__stage)
+                    pos=app().pnorm(345, y + 2), parent=self.__stage)
 
             self.__nodes += [col1, col2, col3]
             pos += 1
@@ -250,10 +252,10 @@ class HiscoreTab(avg.DivNode):
     def update(self, dt):
         if self.__capturedCursorId is None and abs(self.__lastYSpeed) > 0.1:
             self.__stage.y += self.__lastYSpeed * self.SPEED_FACTOR
-            self.__lastYSpeed /= 1.2
+            self.__lastYSpeed /= self.SMOOTH_FACTOR
             self.__clampPan()
         elif not self.__scrollLock:
-            self.__stage.y -= 1.2
+            self.__stage.y -= self.SMOOTH_FACTOR
             if self.__stage.y < -self.__stage.height:
                 self.__stage.y = self.height
 
@@ -297,14 +299,15 @@ class Key(avg.DivNode):
 
         self.__bg = avg.RectNode(size=self.size, opacity=0, fillcolor=consts.COLOR_BLUE,
                 fillopacity=1, parent=self)
-        self.__wnode = GameWordsNode(pos=(self.width / 2 + 4, self.height / 2 - 28),
+        self.__wnode = GameWordsNode(pos=(self.width / 2 + app().xnorm(4),
+                self.height / 2 - app().ynorm(28)),
                 alignment='center', fontsize=50, color=consts.COLOR_RED,
                 rawtextmode=True, parent=self)
 
         if char == '#':
             self.__wnode.text = 'OK'
             self.__wnode.fontsize = 30
-            self.__wnode.y = self.height / 2 - 18
+            self.__wnode.y = self.height / 2 - app().ynorm(18)
         else:
             self.__wnode.text = char
 
@@ -328,29 +331,30 @@ class Key(avg.DivNode):
 
 
 class Keyboard(avg.DivNode):
-    KEY_DIM = 60
-    PADDING = 15
-    def __init__(self, cb, *args, **kwargs):
+    def __init__(self, keySize, padding, cb, *args, **kwargs):
         super(Keyboard, self).__init__(*args, **kwargs)
 
         self.__cb = cb
 
         rows = [
             ['QWERTYUIOP<', 0],
-            ['ASDFGHJKL#', (self.KEY_DIM + self.PADDING) / 2],
-            ['ZXCVBNM ', self.KEY_DIM + self.PADDING]
+            ['ASDFGHJKL#', (keySize + padding) / 2],
+            ['ZXCVBNM ', keySize + padding]
         ]
+        
+        self.allowedKeys = []
 
         maxx = maxy = 0
         y = 0
         for r in rows:
             x = r[1]
             for c in r[0]:
-                Key(c, self.__onKeyPressed, pos=(x, y), size=(self.KEY_DIM, self.KEY_DIM),
+                Key(c, self.__onKeyPressed, pos=(x, y), size=(keySize, keySize),
                         parent=self)
-                x += self.KEY_DIM + self.PADDING
+                self.allowedKeys.append(c)
+                x += keySize + padding
                 maxx = max(x, maxx)
-            y += self.KEY_DIM + self.PADDING
+            y += keySize + padding
             maxy = max(y, maxy)
 
         self.size = Point2D(maxx, maxy)
@@ -370,7 +374,6 @@ class Keyboard(avg.DivNode):
 class PlayerName(avg.DivNode):
     def __init__(self, *args, **kwargs):
         super(PlayerName, self).__init__(*args, **kwargs)
-        self.size = Point2D(450, 150)
 
         self.__name = GameWordsNode(fontsize=150, color=consts.COLOR_RED, text='',
                 alignment='center', pos=(self.size.x / 2, 0), parent=self)
@@ -459,10 +462,58 @@ class Clouds(avg.ImageNode):
             avg.fadeOut(self, 180)
         avg.fadeIn(self, 80, random.uniform(0.05, self.maxOpacity), reset)
 
-if __name__ == '__main__':
-    import libavg
-    class T(engine.Application):
-        def init(self):
-            m = Menu(parent=self._parentNode)
+
+class RIImage(avg.ImageNode):
+    def __init__(self, lock='x', **kwargs):
+        super(RIImage, self).__init__(**kwargs)
+        if lock == 'x':
+            nf = app().xnorm
+        else:
+            nf = app().ynorm
+        
+        self.size = (nf(self.getMediaSize().x), nf(self.getMediaSize().y))
     
-    T.start(resolution=(800, 600))
+class ExitButton(avg.DivNode):
+    UNSET_ICON_OPACITY = 0.3
+    def __init__(self, cb, *args, **kwargs):
+        super(ExitButton, self).__init__(*args, **kwargs)
+        
+        self.__trigger = avg.CircleNode(r=1, fillcolor=consts.COLOR_BLUE, opacity=0,
+                fillopacity=0, parent=self)
+        self.__icon = RIImage(href='exit.png', opacity=self.UNSET_ICON_OPACITY,
+                parent=self)
+        self.__trigger.pos = self.__icon.size / 2
+        self.__cursorId = None
+        self.__anim = None
+        self.__cb = cb
+        
+        self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH, self.__onDown)
+        self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onUp)
+    
+    def __onDown(self, event):
+        try:
+            self.setEventCapture(event.cursorid)
+        except RuntimeError:
+            pass
+        else:
+            self.__cursorId = event.cursorid
+            self.__icon.opacity = 1
+            maxr = max(self.__icon.size.x, self.__icon.size.y) / 2
+            self.__anim = avg.LinearAnim(self.__trigger, 'r', 500, 1, maxr)
+            self.__anim.start()
+            self.__trigger.fillopacity = 0.6
+            return True
+    
+    def __onUp(self, event):
+        if self.__cursorId is not None:
+            self.releaseEventCapture(event.cursorid)
+            self.__cursorId = None
+            self.__icon.opacity = self.UNSET_ICON_OPACITY
+            self.__trigger.fillopacity = 0
+            if self.__anim and self.__anim.isRunning():
+                self.__anim.abort()
+            else:
+                self.__cb()
+                
+            self.__anim = None
+        

@@ -541,4 +541,3 @@ class City(Target):
                 fillopacity=1, fillcolor='8888ff', opacity=0, parent=self._node)
         super(City, self).__init__(slot, self._node)
 
-

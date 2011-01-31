@@ -31,6 +31,7 @@
 
 import os
 import random
+import math
 
 from libavg import avg, Point2D, AVGAppUtil
 
@@ -51,20 +52,20 @@ class Start(engine.FadeGameState):
         im.size = im.getMediaSize() * xfactor
         im.pos = (0, app().size.y - im.size.y)
 
-        rightPane = avg.DivNode(pos=(app().xnorm(765), app().ynorm(90)), parent=self)
+        rightPane = avg.DivNode(pos=app().pnorm(765, 90), parent=self)
         
         self.__menu = widgets.Menu(onPlay=self.__onPlay, onAbout=self.__onAbout,
                 onDiffChanged=self.__onDiffChanged, onQuit=self.__onQuit,
                 width=app().xnorm(350), parent=rightPane)
 
         self.__hiscoreTab = widgets.HiscoreTab(db=app().scoreDatabase,
-                pos=(0, app().ynorm(350)), size=(app().xnorm(350), app().ynorm(270)),
+                pos=app().pnorm(0, 350), size=app().pnorm(350, 270),
                 parent=rightPane)
         
         self.registerBgTrack('theme.ogg')
         
-        # widgets.GameWordsNode(text='PRERELEASE TEST - DO NOT DISTRIBUTE', fontsize=24,
-        #         color='553333', pos=(20, 20), parent=self)
+        widgets.GameWordsNode(text='PRERELEASE TEST - NOT FOR DISTRIBUTION', fontsize=24,
+                color='553333', pos=(20, 20), parent=self)
 
     def _resume(self):
         self.__hiscoreTab.refresh()
@@ -100,8 +101,49 @@ class Start(engine.FadeGameState):
 
 
 class About(engine.FadeGameState):
-    pass
+    def _init(self):
+        im = avg.ImageNode(href='logo.png', mipmap=True, parent=self)
+        xfactor = app().size.x / im.getMediaSize().x / 2
+        im.size = im.getMediaSize() * xfactor
+        
+        about = widgets.VLayout(interleave=10, width=600, pos=app().pnorm(580, 300),
+                parent=self)
+        about.add(widgets.GameWordsNode(text='EMPCommand', color=consts.COLOR_BLUE,
+                fontsize=60))
+        about.add(widgets.GameWordsNode(text='© 2010-2011 OXullo Intersecans',
+                color='ffffff', fontsize=30))
+        about.add(widgets.GameWordsNode(text='http://www.brainrapers.org/empcommand/',
+                color=consts.COLOR_RED, fontsize=20))
+        about.add(widgets.GameWordsNode(
+                text='''Yet another Missile Command ® clone, fully employing modern
+                multitouch controllers.<br/>Enemies must be defeated with fierce touches
+                on your multitouch surface, but be aware of timings and ammo!<br/><br/>
+                Bonus powerups are given for multiple kills with single 
+                missiles:<br/><br/> * AMMO
+                powerup (3 enemies in one shot): turret ammo will be refilled<br/>
+                 * NUKE powerup (4 enemies or more): the designated turret will
+                launch a super powerful missile that will wipe out most of the
+                enemies<br/><br/>Powerups can be deployed with a drag&amp;drop to one of
+                the living turrets.<br/>Keep cities from being destroyed if you want to
+                raise up your score and consider that once a turret has been hit for three
+                times, it's gone, along with its ammo.''',
+                width=app().xnorm(600), color='ffffff', fontsize=12))
+        
+        avg.ImageNode(href='enmy_sky.png', size=(app().size.x, app().ynorm(300)),
+                pos=(0, app().size.y - app().ynorm(300)), angle=math.pi,
+                opacity=0.2, parent=self)
+        
+        self.registerBgTrack('about_theme.ogg', maxVolume=0.5)
+
+    def _onTouch(self, event):
+        engine.SoundManager.play('click.ogg')
+        self.engine.changeState('start')
     
+    def _onKeyDown(self, event):
+        engine.SoundManager.play('click.ogg')
+        self.engine.changeState('start')
+        return True
+
 
 class Game(engine.FadeGameState):
     GAMESTATE_INITIALIZING = 'INIT'
@@ -185,6 +227,8 @@ class Game(engine.FadeGameState):
         if consts.DEBUG:
             self.__debugArea = widgets.GameWordsNode(pos=(10, 10), size=(300, 600),
                 fontsize=8, color='ffffff', opacity=0.7, parent=self)
+        
+        widgets.ExitButton(cb=self.__onExit, pos=app().pnorm(1210, 10), parent=self)
 
     def _preTransIn(self):
         self.reset()
@@ -351,6 +395,9 @@ class Game(engine.FadeGameState):
             elif event.keystring == 'e':
                 self.clouds.blink()
                 return True
+            elif event.keystring == '1':
+                self.engine.changeState('hiscore')
+                return True
 
     def updateAmmoGauge(self):
         ammo = 0
@@ -412,6 +459,8 @@ class Game(engine.FadeGameState):
         g_Log.trace(g_Log.APP, 'Gamestate %s -> %s' % (self.__gameState, newState))
         self.__gameState = newState
 
+    def __onExit(self):
+        self.engine.changeState('start')
 
 class Results(engine.FadeGameState):
     def _init(self):
@@ -510,19 +559,23 @@ class Hiscore(engine.FadeGameState):
     TIMEOUT = 8000
     def _init(self):
         widgets.GameWordsNode(text='New hiscore!',
-                pos=(app().size.x / 2, 70), alignment='center', fontsize=70,
+                pos=(app().size.x / 2, app().ynorm(70)), alignment='center', fontsize=70,
                 color='ff2222', parent=self)
 
-        self.__score = widgets.GameWordsNode(pos=(app().size.x / 2, 170),
+        self.__score = widgets.GameWordsNode(pos=(app().size.x / 2, app().ynorm(170)),
                 alignment='center', fontsize=40, color='aaaaaa', parent=self)
 
-        self.__keyboard = widgets.Keyboard(self.__onKeyTouch, parent=self)
+        self.__keyboard = widgets.Keyboard(
+                keySize=app().ynorm(60),
+                padding=app().xnorm(15),
+                cb=self.__onKeyTouch, parent=self)
         self.__keyboard.pos = ((app().size.x - self.__keyboard.size.x) / 2,
-                app().size.y - self.__keyboard.size.y - 100)
+                app().size.y - self.__keyboard.size.y - app().ynorm(100))
 
-        self.__playerName = widgets.PlayerName(parent=self)
+        self.__playerName = widgets.PlayerName(size=app().pnorm(450, 150),
+                parent=self)
         self.__playerName.pos = ((app().size.x - self.__playerName.size.x) / 2,
-                240)
+                app().ynorm(240))
 
         self.__timeout = None
 
@@ -531,6 +584,20 @@ class Hiscore(engine.FadeGameState):
         self.__playerName.reset()
         self.__resetTimeout()
 
+    def _onKeyDown(self, event):
+        key = event.keystring.upper()
+        if key in ('#', '<'):
+            return False
+        
+        if key == 'RETURN':
+            key = '#'
+        elif key == 'BACKSPACE':
+            key = '<'
+            
+        if key in self.__keyboard.allowedKeys:
+            self.__onKeyTouch(key)
+            return True
+        
     def __saveScore(self):
         name = self.__playerName.text
         if name == '':
@@ -555,11 +622,14 @@ class Hiscore(engine.FadeGameState):
     def __onKeyTouch(self, key):
         self.__resetTimeout()
         if key == '<':
+            engine.SoundManager.play('selection.ogg', volume=0.5)
             self.__playerName.delete()
         elif key == '#':
+            engine.SoundManager.play('click.ogg')
             self.__saveScore()
             self.__clearTimeout()
             self.engine.changeState('start')
         else:
+            engine.SoundManager.play('selection.ogg', volume=0.5)
             self.__playerName.addChar(key)
 

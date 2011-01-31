@@ -33,21 +33,9 @@ import os
 import pickle
 import random
 import atexit
-from libavg import avg
+from libavg import avg, Point2D
 import gameapp
 import consts
-
-USE_PYGAME_MIXER = consts.SOUND_PYGAME
-
-if USE_PYGAME_MIXER:
-    try:
-        import pygame.mixer
-        pygame.mixer.init(frequency=consts.SOUND_FREQUENCY,
-                buffer=consts.SOUND_BUFFER_SIZE)
-        pygame.mixer.set_num_channels(consts.SOUND_VOICES)
-    except ImportError:
-        USE_PYGAME_MIXER = False
-
 
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
@@ -69,12 +57,8 @@ class SoundManager(object):
 
     @classmethod
     def getSample(cls, fileName, loop=False):
-        if USE_PYGAME_MIXER:
-            base = os.path.dirname(os.path.abspath(__file__))
-            return pygame.mixer.Sound(os.path.join(base, 'media', 'snd', fileName))
-        else:
-            return avg.SoundNode(href=os.path.join('snd', fileName), loop=loop,
-                    parent=cls.parent)
+        return avg.SoundNode(href=os.path.join('snd', fileName), loop=loop,
+                parent=cls.parent)
 
     @classmethod
     def allocate(cls, fileName, nodes=1):
@@ -94,8 +78,7 @@ class SoundManager(object):
             raise RuntimeError('Sound sample %s hasn\'t been allocated' % fileName)
 
         mySound = cls.objects[fileName].pop(0)
-        if not USE_PYGAME_MIXER:
-            mySound.stop()
+        mySound.stop()
 
         if volume is not None:
             maxVol = volume
@@ -108,9 +91,6 @@ class SoundManager(object):
             mySound.volume = volume
         
         sc = mySound.play()
-
-        if USE_PYGAME_MIXER and sc is None:
-            g_Log.trace(g_Log.WARNING, 'Sound allocation failed: %s' % mySound)
 
         cls.objects[fileName].append(mySound)
 
@@ -244,10 +224,7 @@ class GameState(avg.DivNode):
 
     def registerBgTrack(self, fileName, maxVolume=1):
         self._bgTrack = SoundManager.getSample(fileName, loop=True)
-        if USE_PYGAME_MIXER:
-            self._bgTrack.set_volume(maxVolume)
-        else:
-            self._bgTrack.volume = maxVolume
+        self._bgTrack.volume = maxVolume
         self._maxBgTrackVolume = maxVolume
 
     def update(self, dt):
@@ -259,11 +236,11 @@ class GameState(avg.DivNode):
 
     def onKeyDown(self, event):
         if not self._isFrozen:
-            self._onKeyDown(event)
+            return self._onKeyDown(event)
 
     def onKeyUp(self, event):
         if not self._isFrozen:
-            self._onKeyUp(event)
+            return self._onKeyUp(event)
 
     def enter(self):
         self.opacity = 1
@@ -367,21 +344,44 @@ class FadeGameState(TransitionGameState):
         avg.fadeOut(self, self.TRANS_DURATION, postCb)
 
     def _doBgTrackTransIn(self):
-        if USE_PYGAME_MIXER:
-            self._bgTrack.play(loops= -1, fade_ms=self.TRANS_DURATION)
-        else:
-            self._bgTrack.volume = 0
-            self._bgTrack.play()
-            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, 0,
-                    self._maxBgTrackVolume).start()
+        self._bgTrack.volume = 0
+        self._bgTrack.play()
+        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION, 0,
+                self._maxBgTrackVolume).start()
 
     def _doBgTrackTransOut(self):
-        if USE_PYGAME_MIXER:
-            self._bgTrack.fadeout(self.TRANS_DURATION)
-        else:
-            avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION,
-                    self._maxBgTrackVolume, 0, False, None,
-                    self._bgTrack.stop).start()
+        avg.LinearAnim(self._bgTrack, 'volume', self.TRANS_DURATION,
+                self._maxBgTrackVolume, 0, False, None,
+                self._bgTrack.stop).start()
+
+
+# class RIHelper(object):
+#     requests = []
+#     
+#     NORMTYPE_XORWIDTH = 'xn'
+#     NORMTYPE_YORHEIGHT = 'yn'
+#     NORMTYPE_POINT = 'p'
+#     NORMTYPE_RADIUS = 'rad'
+#     NORMTYPE_SPEED = 'spd'
+#     
+#     @classmethod
+#     def register(cls, obj, ident, normType):
+#         cls.requests.append([obj, ident, normType])
+#     
+#     @classmethod
+#     def normalize(cls, xnorm, ynorm, p):
+#         for r in cls.requests:
+#             val = getattr(r[0], r[1])
+#             normType = r[2]
+#             
+#             if normType == cls.NORMTYPE_XORWIDTH:
+#                 
+#             elif normType == cls.NORMTYPE_YORHEIGHT:
+#             elif normType == cls.NORMTYPE_POINT:
+#             elif normType == cls.NORMTYPE_RADIUS:
+#             elif normType == cls.NORMTYPE_SPEED:
+#             else:
+#                 raise RuntimeError('Unknown normType %s' % normType)
 
 
 class Application(gameapp.GameApp):
@@ -410,6 +410,16 @@ class Application(gameapp.GameApp):
 
     def ynorm(self, value):
         return int(value * self.size.y / float(consts.ORIGINAL_SIZE[1]))
+    
+    def pnorm(self, *args):
+        if len(args) == 2:
+            point = Point2D(args)
+        elif type(args[0]) == Point2D:
+            point = args[0]
+        else:
+            raise ValueError('Cannot convert %s to Point2D' % str(args))
+            
+        return Point2D(self.xnorm(point.x), self.ynorm(point.y))
         
     def registerState(self, handle, state):
         g_Log.trace(g_Log.APP, 'Registering state %s: %s' % (handle, state))
@@ -449,11 +459,11 @@ class Application(gameapp.GameApp):
 
     def onKeyDown(self, event):
         if self.__currentState:
-            self.__currentState.onKeyDown(event)
+            return self.__currentState.onKeyDown(event)
 
     def onKeyUp(self, event):
         if self.__currentState:
-            self.__currentState.onKeyUp(event)
+            return self.__currentState.onKeyUp(event)
 
     def onTouch(self, event):
         if self.__currentState:

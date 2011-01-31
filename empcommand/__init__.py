@@ -29,14 +29,12 @@
 # expressed or implied, of OXullo Intersecans.
 
 import os
-from libavg import avg, AVGApp, Point2D, AVGAppUtil
+from libavg import avg, AVGAppUtil
 
 import engine
 import states
 import widgets
 import consts
-
-from gameapp import app
 
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
@@ -48,11 +46,6 @@ class EmpCommand(engine.Application):
     exitButton = True
 
     def init(self):
-        if engine.USE_PYGAME_MIXER:
-            g_Log.trace(g_Log.APP, 'Using pygame.mixer for audio FX')
-        else:
-            g_Log.trace(g_Log.APP, 'Using libavg sound nodes for audio FX')
-
         engine.SoundManager.init(self._parentNode)
 
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
@@ -93,8 +86,11 @@ def createPreviewNode(maxSize):
 
     return AVGAppUtil.createImagePreviewNode(maxSize, absHref = filename)
 
+
 apps = (
-        {'class': EmpCommand,
-            'createPreviewNode': createPreviewNode},
-        )
+        {
+            'class': EmpCommand,
+            'createPreviewNode': createPreviewNode
+        },
+)
 
