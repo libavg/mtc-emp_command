@@ -34,7 +34,8 @@ import math
 import random
 from libavg import avg, Point2D
 
-from gameapp import app
+from libavg.gameapp import app
+
 import engine
 import consts
 

@@ -33,8 +33,9 @@ import os
 import pickle
 import random
 import atexit
-from libavg import avg, Point2D
-import gameapp
+import libavg
+from libavg import avg, Point2D, gameapp
+
 import consts
 
 g_Player = avg.Player.get()
@@ -502,6 +503,9 @@ class Application(gameapp.GameApp):
             self.__currentState.leave()
             self.__currentState = None
 
+    def _getPackagePath(self):
+        return __file__
+        
     def __getState(self, handle):
         if handle in self.__registeredStates:
             return self.__registeredStates[handle]

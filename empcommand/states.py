@@ -34,8 +34,8 @@ import random
 import math
 
 from libavg import avg, Point2D, AVGAppUtil
+from libavg.gameapp import app
 
-from gameapp import app
 import engine
 import consts
 import widgets
@@ -50,6 +50,7 @@ class Start(engine.FadeGameState):
         im = avg.ImageNode(href='logo.png', mipmap=True, parent=self)
         xfactor = app().size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
+        print app().size
         im.pos = (0, app().size.y - im.size.y)
 
         rightPane = avg.DivNode(pos=app().pnorm(765, 90), parent=self)
