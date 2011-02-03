@@ -51,7 +51,7 @@ class EmpCommand(engine.Application):
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
                 size=self.size, parent=self._parentNode)
 
-        self.scoreDatabase = engine.HiscoreDatabase(consts.HISCORE_FILENAME)
+        self.scoreDatabase = engine.HiscoreDatabase()
 
         engine.SoundManager.allocate('bonus_alert.ogg')
         engine.SoundManager.allocate('bonus_drop.ogg')

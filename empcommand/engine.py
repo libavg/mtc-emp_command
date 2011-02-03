@@ -116,98 +116,48 @@ class ScoreEntry(object):
 
 
 class HiscoreDatabase(object):
-    PICKLE_PROTO = 0
-
-    def __init__(self, dataFile, maxSize=20):
-        dataFile = gameapp.app().getUserdataPath(dataFile)
-        self.__dataFile = dataFile
-        self.__data = []
+    def __init__(self, maxSize=20):
         self.__maxSize = maxSize
-        atexit.register(self.__dump)
-
-        g_Log.trace(g_Log.APP, 'Initializing hiscore database %s' % dataFile)
-
-        if not self.__load(dataFile):
-            if os.path.exists(dataFile + '.bak'):
-                if self.__load(dataFile + '.bak'):
-                    g_Log.trace(g_Log.WARNING,
-                            'Hiscore data file is unreadable, using backup')
-                else:
-                    g_Log.trace(g_Log.ERROR,
-                            'Cannot recover hiscore data, starting from scratch')
-                    self.fillShit()
-            else:
-                    g_Log.trace(g_Log.ERROR,
-                            'Cannot recover hiscore data, starting from scratch')
-                    self.fillShit()
-        elif not os.path.exists(dataFile):
-            g_Log.trace(g_Log.WARNING, 'Hiscore data unavailable, generating '
-                    'random scores')
-            self.fillShit()
+        self.__ds = gameapp.Datastore(tag='hiscore',
+                initialData=self.__generateShit,
+                validator=self.__validate)
 
     def isFull(self):
-        return len(self.__data) >= self.__maxSize
+        return len(self.__ds.data) >= self.__maxSize
 
     def addScore(self, score, sync=True):
-        self.__data.append(score)
-        self.__data = sorted(self.__data, reverse=True)
+        self.__ds.data.append(score)
+        self.__ds.data = sorted(self.__ds.data, reverse=True)[0:self.__maxSize]
 
         if sync:
-            self.__dump()
+            self.__ds.commit()
 
     @property
     def data(self):
-        return self.__data
+        return self.__ds.data
 
-    def fillShit(self):
+    def __generateShit(self):
         import random
-        rng = 'QWERTZUIOPASDFGHJKLYXCVBNM'
+        data = []
+        rng = 'QWERTYUIOPASDFGHJKLZXCVBNM'
         for i in xrange(self.__maxSize):
-            self.addScore(ScoreEntry(random.choice(rng) + \
-                    random.choice(rng) + \
-                    random.choice(rng),
-                    random.randrange(80, 300) * 50), sync=False)
+            data.append(
+                    ScoreEntry(random.choice(rng) + \
+                        random.choice(rng) + \
+                        random.choice(rng),
+                        random.randrange(80, 300) * 50))
+        
+        return sorted(data, reverse=True)
 
-    def __load(self, fileName):
-        try:
-            f = open(fileName)
-        except IOError:
+    def __validate(self, lst):
+        if type(lst) != list or not lst:
             return False
-
-        try:
-            self.__data = pickle.load(f)
-        except:
-            f.close()
-            return False
-
-        f.close()
-
-        if len(self.__data) == 0:
-            return False
-        elif len(self.__data) > self.__maxSize:
-            g_Log.trace(g_Log.WARNING, 'Slicing score data, trashing %d records' % (
-                    len(self.__data) - self.__maxSize))
-            self.__data = self.__data[0:self.__maxSize]
-
+        
+        for se in lst:
+            if not isinstance(se, ScoreEntry):
+                return False
+        
         return True
-
-    def __dump(self):
-        if os.path.exists(self.__dataFile):
-            try:
-                os.rename(self.__dataFile, self.__dataFile + '.bak')
-            except OSError:
-                g_Log.trace(g_Log.WARNING, 'Cannot create hiscores backup')
-
-        try:
-            f = open(self.__dataFile, 'wb')
-        except IOError:
-            g_Log.trace(g_Log.ERROR, 'Cannot safely save hiscores')
-            return
-
-        pickle.dump(self.__data, f, self.PICKLE_PROTO)
-        f.close()
-        g_Log.trace(g_Log.APP, 'Hiscore database dumped to %s' % self.__dataFile)
-
 
 class GameState(avg.DivNode):
     def __init__(self, *args, **kwargs):
