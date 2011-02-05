@@ -32,7 +32,7 @@
 import random
 
 from libavg import avg, Point2D
-from libavg.gameapp import app
+from empcommand import app
 
 import engine
 import widgets

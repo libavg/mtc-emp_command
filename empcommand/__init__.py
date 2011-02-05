@@ -31,6 +31,9 @@
 import os
 from libavg import avg, AVGAppUtil
 
+def app():
+    return EmpCommand.get()
+
 import engine
 import states
 import widgets
@@ -39,7 +42,7 @@ import consts
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
 
-__all__ = ['apps', 'EmpCommand']
+__all__ = ['app', 'apps', 'EmpCommand']
 
 
 class EmpCommand(engine.Application):
@@ -51,7 +54,7 @@ class EmpCommand(engine.Application):
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
                 size=self.size, parent=self._parentNode)
 
-        self.scoreDatabase = engine.HiscoreDatabase()
+        self.scoreDatabase = engine.HiscoreDatabase(self)
 
         engine.SoundManager.allocate('bonus_alert.ogg')
         engine.SoundManager.allocate('bonus_drop.ogg')

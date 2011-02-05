@@ -116,9 +116,9 @@ class ScoreEntry(object):
 
 
 class HiscoreDatabase(object):
-    def __init__(self, maxSize=20):
+    def __init__(self, app, maxSize=20):
         self.__maxSize = maxSize
-        self.__ds = gameapp.Datastore(tag='hiscore',
+        self.__ds = app.initDatastore(tag='hiscore',
                 initialData=self.__generateShit,
                 validator=self.__validate)
 
@@ -399,12 +399,6 @@ class Application(gameapp.GameApp):
 
         self.__currentState = newState
 
-    def quit(self):
-        if gameapp.ownStarter:
-            g_Player.stop()
-        else:
-            self.leave()
-        
     def getState(self, handle):
         return self.__getState(handle)
 
