@@ -154,8 +154,8 @@ class Game(engine.FadeGameState):
     def _init(self):
         # Sky
         avg.ImageNode(href='enmy_sky.png', size=(app().size.x, app().ynorm(300)),
-                opacity=0.2, parent=self)
-        self.clouds = widgets.Clouds(maxOpacity=0.3, size=(app().size.x,
+                opacity=0.3, parent=self)
+        self.clouds = widgets.Clouds(maxOpacity=0.4, size=(app().size.x,
                 app().ynorm(600)), parent=self)
         EnemyExplosion.registerCallback(self.clouds.blink)
         
@@ -229,7 +229,8 @@ class Game(engine.FadeGameState):
             self.__debugArea = widgets.GameWordsNode(pos=(10, 10), size=(300, 600),
                 fontsize=8, color='ffffff', opacity=0.7, parent=self)
         
-        widgets.ExitButton(cb=self.__onExit, pos=app().pnorm(1210, 10), parent=self)
+        self.__quitSwitch = widgets.QuitSwitch(cb=self.__onExit,
+                pos=app().pnorm(1076, 10), parent=self)
 
     def _preTransIn(self):
         self.reset()
@@ -252,6 +253,8 @@ class Game(engine.FadeGameState):
 
         for obj in Target.objects + Missile.objects:
             obj.destroy()
+        
+        self.__quitSwitch.reset()
 
     def setNewGame(self):
         self.__wave = 0

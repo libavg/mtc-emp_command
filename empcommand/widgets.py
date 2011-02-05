@@ -473,48 +473,86 @@ class RIImage(avg.ImageNode):
             nf = app().ynorm
         
         self.size = (nf(self.getMediaSize().x), nf(self.getMediaSize().y))
-    
+
+
 class ExitButton(avg.DivNode):
     UNSET_ICON_OPACITY = 0.3
-    def __init__(self, cb, *args, **kwargs):
+
+    def __init__(self, *args, **kwargs):
         super(ExitButton, self).__init__(*args, **kwargs)
+
+        self.__fill = RIImage(href='exit_fill.png', parent=self)
+        self.__icon = RIImage(href='exit.png', parent=self)
         
-        self.__trigger = avg.CircleNode(r=1, fillcolor=consts.COLOR_BLUE, opacity=0,
-                fillopacity=0, parent=self)
-        self.__icon = RIImage(href='exit.png', opacity=self.UNSET_ICON_OPACITY,
-                parent=self)
-        self.__trigger.pos = self.__icon.size / 2
+    def activate(self, active):
+        if active:
+            self.opacity = 1
+            self.__fill.opacity = 1
+        else:
+            self.opacity = self.UNSET_ICON_OPACITY
+            self.__fill.opacity = 0
+
+
+class QuitSwitch(avg.DivNode):
+    BUTTON_RIGHT_XLIMIT = 148
+    def __init__(self, cb, *args, **kwargs):
+        super(QuitSwitch, self).__init__(*args, **kwargs)
+
+        self.__slider = RIImage(href='exit_slider.png', parent=self)
+        self.__button = ExitButton(parent=self)
+        self.__buttonInitialPos = None
         self.__cursorId = None
         self.__anim = None
         self.__cb = cb
+        self.__xlimit = app().xnorm(self.BUTTON_RIGHT_XLIMIT)
         
-        self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH, self.__onDown)
-        self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onUp)
+        self.__button.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
+                self.__onDown)
+        self.__button.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onUp)
+        self.__button.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
+                self.__onMotion)
     
+        self.reset()
+        
+    def reset(self):
+        self.__button.pos = (self.__xlimit, 0)
+        self.__slider.opacity = 0
+        self.__button.activate(False)
+        
     def __onDown(self, event):
         try:
-            self.setEventCapture(event.cursorid)
+            self.__button.setEventCapture(event.cursorid)
         except RuntimeError:
             pass
         else:
             self.__cursorId = event.cursorid
-            self.__icon.opacity = 1
-            maxr = max(self.__icon.size.x, self.__icon.size.y) / 2
-            self.__anim = avg.LinearAnim(self.__trigger, 'r', 500, 1, maxr)
-            self.__anim.start()
-            self.__trigger.fillopacity = 0.6
+            self.__buttonInitialPos = event.pos - self.__button.pos
+            self.__button.activate(True)
+            avg.fadeIn(self.__slider, 100)
+            
             return True
     
     def __onUp(self, event):
         if self.__cursorId is not None:
-            self.releaseEventCapture(event.cursorid)
+            self.__button.releaseEventCapture(event.cursorid)
             self.__cursorId = None
-            self.__icon.opacity = self.UNSET_ICON_OPACITY
-            self.__trigger.fillopacity = 0
-            if self.__anim and self.__anim.isRunning():
-                self.__anim.abort()
+            
+            self.__button.activate(False)
+            
+            if self.__button.x > 20:
+                avg.fadeOut(self.__slider, 100)
+                self.__anim = avg.EaseInOutAnim(self.__button, 'x', 200, self.__button.x,
+                        self.__xlimit, 50, 150)
+                self.__anim.start()
             else:
                 self.__cb()
-                
-            self.__anim = None
-        
+    
+    def __onMotion(self, event):
+        if self.__cursorId is not None:
+            nx = (event.pos - self.__buttonInitialPos).x
+            if nx < 0:
+                nx = 0
+            if nx > self.__xlimit:
+                nx = self.__xlimit
+
+            self.__button.x = nx
