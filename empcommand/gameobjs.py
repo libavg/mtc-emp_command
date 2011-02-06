@@ -463,7 +463,7 @@ class Target(LayeredSprite):
         self.objects.remove(self)
 
     def getHitPos(self):
-        return self._node.pos + Point2D(10, 10)
+        return self._node.pos + app().pnorm(Point2D(10, 10), diagNorm=True)
 
     def __repr__(self):
         return '%s %s' % (self.__class__.__name__, self._node.pos)
@@ -477,14 +477,18 @@ class Turret(Target):
     LIVES_COLORS = {3: '4444ff', 2: 'aa44cc', 1: 'ff4444', 0: 'ff1111'}
     def __init__(self, slot, ammo):
         self._node = avg.DivNode()
-        self.base = avg.PolygonNode(pos=((10, 0), (0, 20), (20, 20)), fillopacity=1,
-                fillcolor=self.LIVES_COLORS[self.defaultLives], opacity=0,
-                parent=self._node)
+        self.base = avg.PolygonNode(
+                pos=app().spnorm(((10, 0), (0, 20), (20, 20)), diagNorm=True),
+                fillopacity=1, fillcolor=self.LIVES_COLORS[self.defaultLives],
+                opacity=0, parent=self._node)
         self.__ammoGauge = widgets.Gauge(consts.COLOR_BLUE,
                 widgets.Gauge.LAYOUT_HORIZONTAL,
-                pos=(0, 25), size=(20, 5), opacity=0.5, parent=self._node)
+                pos=app().pnorm((0, 25), diagNorm=True),
+                size=app().pnorm((20, 5), diagNorm=True),
+                opacity=0.5, parent=self._node)
 
-        self.nukeAlert = widgets.RIImage(href='nuke_alert.png', pos=(0, 35),
+        self.nukeAlert = widgets.RIImage(href='nuke_alert.png',
+                pos=app().pnorm((0, 35), diagNorm=True),
                 opacity=0, parent=self._node)
 
         self.__ammo = int(ammo)
@@ -495,7 +499,8 @@ class Turret(Target):
 
     def fire(self, pos):
         if self.__hasNuke:
-            TurretMissile(self._node.pos + Point2D(10, 0), pos, nuke=True)
+            TurretMissile(self._node.pos + app().pnorm((10, 0), diagNorm=True),
+                    pos, nuke=True)
             self.__hasNuke = False
             app().getState('game').nukeFired = True
             engine.SoundManager.play('nuke_launch.ogg')
@@ -503,7 +508,7 @@ class Turret(Target):
             if self.__ammo > 0:
                 self.__ammo -= 1
                 self.__updateGauge()
-                TurretMissile(self._node.pos + Point2D(10, 0), pos)
+                TurretMissile(self._node.pos + app().pnorm((10, 0), diagNorm=True), pos)
                 engine.SoundManager.play('missile_launch.ogg', randomVolume=True)
                 return True
             else:
@@ -565,7 +570,9 @@ class City(Target):
     defaultLives = 1
     def __init__(self, slot):
         self._node = avg.DivNode()
-        self.base = avg.PolygonNode(pos=((0, 0), (10, 5), (20, 0), (20, 10), (0, 10)),
+        self.base = avg.PolygonNode(
+                pos=app().spnorm(((0, 0), (10, 5), (20, 0), (20, 10), (0, 10)),
+                    diagNorm=True),
                 fillopacity=1, fillcolor='8888ff', opacity=0, parent=self._node)
         super(City, self).__init__(slot, self._node)
 

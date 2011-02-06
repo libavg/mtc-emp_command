@@ -338,15 +338,26 @@ class Application(gameapp.GameApp):
     def ynorm(self, value):
         return int(value * self.size.y / float(consts.ORIGINAL_SIZE[1]))
     
-    def pnorm(self, *args):
-        if len(args) == 2:
-            point = Point2D(args)
-        elif type(args[0]) == Point2D:
-            point = args[0]
+    def pnorm(self, p, diagNorm=False):
+        if len(p) == 2:
+            point = Point2D(p)
+        elif type(p) == Point2D:
+            point = p
         else:
             raise ValueError('Cannot convert %s to Point2D' % str(args))
-            
-        return Point2D(self.xnorm(point.x), self.ynorm(point.y))
+        
+        if diagNorm:
+            return Point2D(self.rnorm(point.x), self.rnorm(point.y))
+        else:
+            return Point2D(self.xnorm(point.x), self.ynorm(point.y))
+    
+    def spnorm(self, seq, diagNorm=False):
+        nseq = []
+        
+        for p in seq:
+            nseq.append(self.pnorm(p, diagNorm=diagNorm))
+        
+        return nseq
         
     def registerState(self, handle, state):
         g_Log.trace(g_Log.APP, 'Registering state %s: %s' % (handle, state))

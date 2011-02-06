@@ -52,17 +52,17 @@ class Start(engine.FadeGameState):
         im.size = im.getMediaSize() * xfactor
         im.pos = (0, app().size.y - im.size.y)
 
-        rightPane = avg.DivNode(pos=app().pnorm(765, 90), parent=self)
+        rightPane = avg.DivNode(pos=app().pnorm((765, 90)), parent=self)
         
         self.__menu = widgets.Menu(onPlay=self.__onPlay, onAbout=self.__onAbout,
                 onDiffChanged=self.__onDiffChanged, onQuit=self.__onQuit,
                 width=app().xnorm(350), parent=rightPane)
 
         self.__hiscoreTab = widgets.HiscoreTab(db=app().scoreDatabase,
-                pos=app().pnorm(0, 350), size=app().pnorm(350, 270),
+                pos=app().pnorm((0, 350)), size=app().pnorm((350, 270)),
                 parent=rightPane)
         
-        self.registerBgTrack('theme.ogg')
+        self.registerBgTrack('theme_start.ogg')
         
         widgets.GameWordsNode(text='PRERELEASE TEST - NOT FOR DISTRIBUTION', fontsize=24,
                 color='553333', pos=(20, 20), parent=self)
@@ -105,7 +105,7 @@ class About(engine.FadeGameState):
         xfactor = app().size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
         
-        about = widgets.VLayout(interleave=10, width=600, pos=app().pnorm(580, 300),
+        about = widgets.VLayout(interleave=10, width=600, pos=app().pnorm((580, 300)),
                 parent=self)
         about.add(widgets.GameWordsNode(text='EMPCommand', color=consts.COLOR_BLUE,
                 fontsize=60))
@@ -136,7 +136,7 @@ class About(engine.FadeGameState):
                 pos=(0, app().size.y - app().ynorm(300)), angle=math.pi,
                 opacity=0.2, parent=self)
         
-        self.registerBgTrack('about_theme.ogg', maxVolume=0.5)
+        self.registerBgTrack('theme_about.ogg', maxVolume=0.5)
 
     def _onTouch(self, event):
         engine.SoundManager.play('click.ogg')
@@ -166,19 +166,30 @@ class Game(engine.FadeGameState):
         b = app().ynorm(10)
         c = app().xnorm(30)
         d = app().ynorm(5)
+        ito = app().ynorm(consts.INVALID_TARGET_Y_OFFSET)
+        polpos = (
+            (-a, app().size.y - ito + b),
+            (c, app().size.y - ito),
+            (app().size.x - c, app().size.y - ito),
+            (app().size.x + a, app().size.y - ito + b),
+            (app().size.x + a, app().size.y + d),
+            (-a, app().size.y + d),
+        )
+        
         avg.PolygonNode(
-                pos=(
-                    (-a, app().size.y - consts.INVALID_TARGET_Y_OFFSET + b),
-                    (c, app().size.y - consts.INVALID_TARGET_Y_OFFSET),
-                    (app().size.x - c, app().size.y - consts.INVALID_TARGET_Y_OFFSET),
-                    (app().size.x + a, app().size.y - consts.INVALID_TARGET_Y_OFFSET + b),
-                    (app().size.x + a, app().size.y + d),
-                    (-a, app().size.y + d),
-                ),
+                pos=polpos,
                 color=consts.COLOR_BLUE,
                 fillcolor=consts.COLOR_BLUE,
                 opacity=0.3,
                 fillopacity=0.05,
+                parent=self
+                )
+        
+        self.explGround = avg.PolygonNode(
+                pos=polpos,
+                fillcolor=consts.COLOR_RED,
+                opacity=0,
+                fillopacity=0,
                 parent=self
                 )
 
@@ -212,7 +223,8 @@ class Game(engine.FadeGameState):
         self.__ammoGauge = widgets.Gauge(consts.COLOR_BLUE,
                 widgets.Gauge.LAYOUT_VERTICAL,
                 pos=(app().xnorm(20),
-                    app().size.y - consts.INVALID_TARGET_Y_OFFSET - app().ynorm(350)),
+                    app().size.y - app().ynorm(consts.INVALID_TARGET_Y_OFFSET) - \
+                        app().ynorm(350)),
                 size=(app().xnorm(15), app().ynorm(300)), parent=self)
         self.__ammoGauge.addLabel('AMMO')
         self.__ammoGauge.setOpacity(0.3)
@@ -225,21 +237,22 @@ class Game(engine.FadeGameState):
         self.__enemiesGauge.addLabel('ENMY')
         self.__enemiesGauge.setOpacity(0.3)
 
-        self.registerBgTrack('game_loop.ogg', maxVolume=0.3)
+        self.registerBgTrack('theme_game.ogg', maxVolume=0.3)
 
         if consts.DEBUG:
             self.__debugArea = widgets.GameWordsNode(pos=(10, 10), size=(300, 600),
                 fontsize=8, color='ffffff', opacity=0.7, parent=self)
         
         self.__quitSwitch = widgets.QuitSwitch(cb=self.__onExit,
-                pos=app().pnorm(1076, 10), parent=self)
+                pos=app().pnorm((1076, 10)), parent=self)
 
     def _preTransIn(self):
         self.reset()
 
     def _postTransIn(self):
         self.nextWave()
-        widgets.CrossHair.warningy = app().size.y - consts.INVALID_TARGET_Y_OFFSET
+        widgets.CrossHair.warningy = app().size.y - \
+                app().ynorm(consts.INVALID_TARGET_Y_OFFSET)
 
     def _preTransOut(self):
         self.__changeGameState(self.GAMESTATE_INITIALIZING)
@@ -273,8 +286,10 @@ class Game(engine.FadeGameState):
         self.__enemiesGone = 0
         self.gameData['initialEnemies'] = self.__enemiesToSpawn
 
-        slots = [Point2D(x * app().xnorm(consts.SLOT_WIDTH), app().size.y - 60)
-                for x in xrange(1, int(app().size.x/app().xnorm(consts.SLOT_WIDTH) + 1))]
+        slots = [Point2D(x * app().xnorm(consts.SLOT_WIDTH), app().size.y - \
+                app().ynorm(60))
+                    for x in xrange(1,
+                        int(app().size.x/app().xnorm(consts.SLOT_WIDTH) + 1))]
 
         random.shuffle(slots)
 
@@ -344,7 +359,8 @@ class Game(engine.FadeGameState):
     def _onTouch(self, event):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
         if turrets:
-            if event.pos.y < app().size.y - consts.INVALID_TARGET_Y_OFFSET:
+            ito = app().ynorm(consts.INVALID_TARGET_Y_OFFSET)
+            if event.pos.y < app().size.y - ito:
                 if len(turrets) > 1:
                     d = abs(turrets[0].getHitPos().x - event.pos.x)
                     selectedTurret = turrets[0]
@@ -434,6 +450,9 @@ class Game(engine.FadeGameState):
                     (1 + app().difficultyLevel * 0.3))
             self.gameData['enemiesDestroyed'] += 1
         else:
+            avg.EaseInOutAnim(self.explGround, 'fillopacity', 200,
+                    0.2, 0, 0, 200).start()
+                        
             if not target.isDead and target.hit():
                 TextFeedback(target.getHitPos(), 'BUSTED!', consts.COLOR_RED)
                 # If we lose a turret, ammo stash sinks with it
@@ -485,7 +504,7 @@ class Results(engine.FadeGameState):
             pos=(app().size.x / 2, app().size.y / 2 - 40),
             alignment='center', fontsize=40, color='aaaaaa', parent=self)
 
-        self.registerBgTrack('results.ogg')
+        self.registerBgTrack('theme_results.ogg')
 
     def _preTransIn(self):
         self.__resultHeader.text = 'Wave %d results' % (
@@ -588,7 +607,7 @@ class Hiscore(engine.FadeGameState):
         self.__keyboard.pos = ((app().size.x - self.__keyboard.size.x) / 2,
                 app().size.y - self.__keyboard.size.y - app().ynorm(100))
 
-        self.__playerName = widgets.PlayerName(size=app().pnorm(450, 150),
+        self.__playerName = widgets.PlayerName(size=app().pnorm((450, 150)),
                 parent=self)
         self.__playerName.pos = ((app().size.x - self.__playerName.size.x) / 2,
                 app().ynorm(240))

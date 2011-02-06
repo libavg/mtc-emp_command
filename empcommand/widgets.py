@@ -238,13 +238,13 @@ class HiscoreTab(avg.DivNode):
         for s in self.db.data:
             y = pos * app().ynorm(40)
             col1 = GameWordsNode(fontsize=20, text=self.toCardinal(pos + 1),
-                    pos=app().pnorm(5, y + 4), parent=self.__stage)
+                    pos=app().pnorm((5, y + 4)), parent=self.__stage)
             col2 = GameWordsNode(fontsize=35, text=s.name,
-                    pos=app().pnorm(75, y),
+                    pos=app().pnorm((75, y)),
                     color=consts.COLOR_BLUE, parent=self.__stage)
             col3 = GameWordsNode(fontsize=28, text=str(s.points), alignment='right',
                     color=consts.COLOR_RED,
-                    pos=app().pnorm(345, y + 2), parent=self.__stage)
+                    pos=app().pnorm((345, y + 2)), parent=self.__stage)
 
             self.__nodes += [col1, col2, col3]
             pos += 1
