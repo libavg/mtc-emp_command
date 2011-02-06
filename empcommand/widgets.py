@@ -57,16 +57,16 @@ class VLayout(avg.DivNode):
         self.yoffs = 0
         self.objs = []
     
-    def add(self, obj):
+    def add(self, obj, offset=0):
         self.appendChild(obj)
         self.objs.append(obj)
-        obj.y = self.yoffs
+        obj.y = self.yoffs + offset
         if obj.size != Point2D(0, 0):
             objSize = obj.size
         else:
             objSize = obj.getMediaSize()
             
-        self.yoffs += objSize.y + self.interleave
+        self.yoffs += objSize.y + self.interleave + offset
         self.height = self.yoffs
 
 
@@ -103,6 +103,7 @@ class MenuItem(avg.DivNode):
         avg.LineNode(pos1=(0, 0), pos2=(0, self.height), color=consts.COLOR_RED,
                 strokewidth=3, parent=self.curContainer)
         
+        self.__scrollSpeed = app().xnorm(self.SCROLL_SPEED * 100) / float(100)
         self.curState = 0
 
     def setActive(self, active):
@@ -116,11 +117,11 @@ class MenuItem(avg.DivNode):
 
     def update(self, dt):
         if self.curState == 0:
-            self.curContainer.x += self.SCROLL_SPEED * dt
+            self.curContainer.x += self.__scrollSpeed * dt
             if self.curContainer.x > self.width:
                 self.curState = 1
         else:
-            self.curContainer.x -= self.SCROLL_SPEED * dt
+            self.curContainer.x -= self.__scrollSpeed * dt
             if self.curContainer.x < 0:
                 self.curState = 0
             
@@ -212,6 +213,7 @@ class HiscoreTab(avg.DivNode):
         self.__initialTouchPos = None
         self.__lastYSpeed = 0
         self.__scrollLock = False
+        self.__speedFactor = app().ynorm(self.SPEED_FACTOR)
         self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH, self.__onTouchDown)
         self.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, self.__onMotion)
         self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onTouchUp)
@@ -252,7 +254,7 @@ class HiscoreTab(avg.DivNode):
 
     def update(self, dt):
         if self.__capturedCursorId is None and abs(self.__lastYSpeed) > 0.1:
-            self.__stage.y += self.__lastYSpeed * self.SPEED_FACTOR
+            self.__stage.y += self.__lastYSpeed * self.__speedFactor
             self.__lastYSpeed /= self.SMOOTH_FACTOR
             self.__clampPan()
         elif not self.__scrollLock:
@@ -280,7 +282,7 @@ class HiscoreTab(avg.DivNode):
                 self.__lastYSpeed = event.speed.y / event.speed.y * self.MAX_SPEED
             else:
                 self.__lastYSpeed = event.speed.y
-            self.__stage.y += event.speed.y * self.SPEED_FACTOR
+            self.__stage.y += event.speed.y * self.__speedFactor
             self.__clampPan()
 
     def __onTouchUp(self, event):
@@ -444,11 +446,28 @@ class Gauge(avg.DivNode):
 
 
 class CrossHair(avg.DivNode):
+    NORMAL_COLOR = 'eeeeee'
+    WARNING_COLOR = 'ff4444'
+    
+    warningy = -1
+    
     def __init__(self, *args, **kwargs):
         super(CrossHair, self).__init__(*args, **kwargs)
         self.__l1 = avg.LineNode(pos1=(10, 0), pos2=(10, 20), strokewidth=4, parent=self)
         self.__l2 = avg.LineNode(pos1=(0, 10), pos2=(20, 10), strokewidth=4, parent=self)
         self.size = (20, 20)
+    
+    def refresh(self):
+        if self.warningy > 0 and self.pos.y > self.warningy:
+            self.__setWarning(True)
+        else:
+            self.__setWarning(False)
+            
+    def __setWarning(self, warning):
+        if warning:
+            self.__l1.color = self.__l2.color = self.WARNING_COLOR
+        else:
+            self.__l1.color = self.__l2.color = self.NORMAL_COLOR
 
 
 class Clouds(avg.ImageNode):

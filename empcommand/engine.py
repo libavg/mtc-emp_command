@@ -30,6 +30,7 @@
 
 
 import os
+import math
 import pickle
 import random
 import atexit
@@ -306,35 +307,6 @@ class FadeGameState(TransitionGameState):
                 self._bgTrack.stop).start()
 
 
-# class RIHelper(object):
-#     requests = []
-#     
-#     NORMTYPE_XORWIDTH = 'xn'
-#     NORMTYPE_YORHEIGHT = 'yn'
-#     NORMTYPE_POINT = 'p'
-#     NORMTYPE_RADIUS = 'rad'
-#     NORMTYPE_SPEED = 'spd'
-#     
-#     @classmethod
-#     def register(cls, obj, ident, normType):
-#         cls.requests.append([obj, ident, normType])
-#     
-#     @classmethod
-#     def normalize(cls, xnorm, ynorm, p):
-#         for r in cls.requests:
-#             val = getattr(r[0], r[1])
-#             normType = r[2]
-#             
-#             if normType == cls.NORMTYPE_XORWIDTH:
-#                 
-#             elif normType == cls.NORMTYPE_YORHEIGHT:
-#             elif normType == cls.NORMTYPE_POINT:
-#             elif normType == cls.NORMTYPE_RADIUS:
-#             elif normType == cls.NORMTYPE_SPEED:
-#             else:
-#                 raise RuntimeError('Unknown normType %s' % normType)
-
-
 class Application(gameapp.GameApp):
     def __init__(self, *args, **kwargs):
         self.__registeredStates = {}
@@ -356,6 +328,10 @@ class Application(gameapp.GameApp):
     def size(self):
         return g_Player.getRootNode().size
 
+    def rnorm(self, value):
+        return (value * math.sqrt((self.size.x ** 2 + self.size.y ** 2) /
+                float(consts.ORIGINAL_SIZE[0] ** 2 + consts.ORIGINAL_SIZE[1] ** 2)))
+        
     def xnorm(self, value):
         return int(value * self.size.x / float(consts.ORIGINAL_SIZE[0]))
 
@@ -421,6 +397,7 @@ class Application(gameapp.GameApp):
         if self.__pointer:
             self.__pointer.opacity = 1
             self.__pointer.pos = event.pos - self.__pointer.size / 2
+            self.__pointer.refresh()
 
     def _enter(self):
         self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,

@@ -49,6 +49,8 @@ class EmpCommand(engine.Application):
     exitButton = True
 
     def init(self):
+        self.difficultyLevel = 1
+        
         engine.SoundManager.init(self._parentNode)
 
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,

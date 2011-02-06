@@ -50,7 +50,6 @@ class Start(engine.FadeGameState):
         im = avg.ImageNode(href='logo.png', mipmap=True, parent=self)
         xfactor = app().size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
-        print app().size
         im.pos = (0, app().size.y - im.size.y)
 
         rightPane = avg.DivNode(pos=app().pnorm(765, 90), parent=self)
@@ -67,7 +66,7 @@ class Start(engine.FadeGameState):
         
         widgets.GameWordsNode(text='PRERELEASE TEST - NOT FOR DISTRIBUTION', fontsize=24,
                 color='553333', pos=(20, 20), parent=self)
-
+        
     def _resume(self):
         self.__hiscoreTab.refresh()
     
@@ -94,8 +93,7 @@ class Start(engine.FadeGameState):
         self.engine.changeState('about')
     
     def __onDiffChanged(self, ndiff):
-        # TODO: implement difficulty level
-        pass
+        app().difficultyLevel = ndiff
         
     def __onQuit(self):
         app().quit()
@@ -112,9 +110,9 @@ class About(engine.FadeGameState):
         about.add(widgets.GameWordsNode(text='EMPCommand', color=consts.COLOR_BLUE,
                 fontsize=60))
         about.add(widgets.GameWordsNode(text='© 2010-2011 OXullo Intersecans',
-                color='ffffff', fontsize=30))
+                color='ffffff', fontsize=25))
         about.add(widgets.GameWordsNode(text='http://www.brainrapers.org/empcommand/',
-                color=consts.COLOR_RED, fontsize=20))
+                color=consts.COLOR_RED, fontsize=18))
         about.add(widgets.GameWordsNode(
                 text='''Yet another Missile Command ® clone, fully employing modern
                 multitouch controllers.<br/>Enemies must be defeated with fierce touches
@@ -129,6 +127,10 @@ class About(engine.FadeGameState):
                 raise up your score and consider that once a turret has been hit for three
                 times, it's gone, along with its ammo.''',
                 width=app().xnorm(600), color='ffffff', fontsize=12))
+                
+        about.add(widgets.GameWordsNode(
+                text='This game is based on libavg (http://www.libavg.de)',
+                color=consts.COLOR_RED, fontsize=16), offset=10)
         
         avg.ImageNode(href='enmy_sky.png', size=(app().size.x, app().ynorm(300)),
                 pos=(0, app().size.y - app().ynorm(300)), angle=math.pi,
@@ -237,9 +239,11 @@ class Game(engine.FadeGameState):
 
     def _postTransIn(self):
         self.nextWave()
+        widgets.CrossHair.warningy = app().size.y - consts.INVALID_TARGET_Y_OFFSET
 
     def _preTransOut(self):
         self.__changeGameState(self.GAMESTATE_INITIALIZING)
+        widgets.CrossHair.warningy = -1
 
     def reset(self):
         self.__targets = []
@@ -261,24 +265,25 @@ class Game(engine.FadeGameState):
         self.setScore(0)
 
     def nextWave(self):
-        Missile.speedMul = 1
+        Missile.speedMul = 1 + app().difficultyLevel * 0.3
         self.nukeFired = False
         self.__wave += 1
-        self.__enemiesToSpawn = self.__wave * consts.ENEMIES_WAVE_MULT
+        self.__enemiesToSpawn = (self.__wave * consts.ENEMIES_WAVE_MULT *
+                (1 + app().difficultyLevel * 0.2))
         self.__enemiesGone = 0
         self.gameData['initialEnemies'] = self.__enemiesToSpawn
 
-        slots = [Point2D(x * consts.SLOT_WIDTH, app().size.y - 60)
-                for x in xrange(1, int(app().size.x / consts.SLOT_WIDTH + 1))]
+        slots = [Point2D(x * app().xnorm(consts.SLOT_WIDTH), app().size.y - 60)
+                for x in xrange(1, int(app().size.x/app().xnorm(consts.SLOT_WIDTH) + 1))]
 
         random.shuffle(slots)
 
-        for i in xrange(0, consts.TURRETS_AMOUNT):
-            Turret(slots.pop(), self.__wave * consts.AMMO_WAVE_MULT)
-
-        self.gameData['initialAmmo'] = self.__wave * consts.AMMO_WAVE_MULT * \
-                consts.TURRETS_AMOUNT
+        self.gameData['initialAmmo'] = self.__wave * consts.AMMO_WAVE_MULT
         self.gameData['initialCities'] = consts.CITIES
+
+        for i in xrange(0, consts.TURRETS_AMOUNT):
+            Turret(slots.pop(), float(self.gameData['initialAmmo']) /
+                    consts.TURRETS_AMOUNT)
 
         for c in xrange(0, self.gameData['initialCities']):
             City(slots.pop())
@@ -402,6 +407,10 @@ class Game(engine.FadeGameState):
             elif event.keystring == '1':
                 self.engine.changeState('hiscore')
                 return True
+            elif event.keystring == 'h':
+                self.reset()
+                self.nextWave()
+                return True
 
     def updateAmmoGauge(self):
         ammo = 0
@@ -421,7 +430,8 @@ class Game(engine.FadeGameState):
                 self.gameData['initialEnemies'])
 
         if target is None:
-            self.addScore(consts.ENEMY_DESTROYED_SCORE)
+            self.addScore(consts.ENEMY_DESTROYED_SCORE *
+                    (1 + app().difficultyLevel * 0.3))
             self.gameData['enemiesDestroyed'] += 1
         else:
             if not target.isDead and target.hit():
@@ -506,7 +516,9 @@ class Results(engine.FadeGameState):
                         gameState.gameData['ammoFired'],
                         self.__getAccuracy()))
 
-        gameState.addScore(len(Target.filter(City)) * consts.CITY_RESCUE_SCORE)
+        gameState.addScore(len(Target.filter(City)) * consts.CITY_RESCUE_SCORE *
+                (1 + app().difficultyLevel * 0.3))
+                
         avg.EaseInOutAnim(self.__resultHeader, 'y', consts.RESULTS_ADDROW_DELAY / 2,
                 app().size.y / 2,
                 app().size.y / 2 - 140, False,

@@ -63,11 +63,17 @@ class Explosion(LayeredSprite):
     cb = None
 
     def __init__(self, pos):
-        self._node = avg.CircleNode(pos=pos, r=20, fillcolor=self.COLOR,
+        self._node = avg.CircleNode(pos=pos, r=app().rnorm(20), fillcolor=self.COLOR,
                 opacity=0, fillopacity=1, parent=self.layer)
 
-        diman = avg.LinearAnim(self._node, 'r', self.DURATION, 1, self.RADIUS)
-        opaan = avg.LinearAnim(self._node, 'fillopacity', self.DURATION, 1, 0)
+        targetRadius = app().rnorm(self.RADIUS)
+        if app().difficultyLevel == 2:
+            targetRadius *= 0.8
+
+        diman = avg.EaseInOutAnim(self._node, 'r', self.DURATION, 1,
+                targetRadius, self.DURATION / 3, self.DURATION * 2 / 3)
+        opaan = avg.EaseInOutAnim(self._node, 'fillopacity', self.DURATION, 1, 0,
+                self.DURATION, 0)
         self.__anim = avg.ParallelAnim((diman, opaan), None, self._cleanup)
         self.__anim.start()
 
@@ -136,9 +142,9 @@ class EnemyExplosion(Explosion):
 class TouchFeedback(LayeredSprite):
     def __init__(self, pos, color):
         self.__node = avg.CircleNode(color=color, strokewidth=2,
-                parent=self.layer, r=10, pos=pos)
+                parent=self.layer, r=app().rnorm(10), pos=pos)
 
-        diman = avg.LinearAnim(self.__node, 'r', 200, 10, 20)
+        diman = avg.LinearAnim(self.__node, 'r', 200, app().rnorm(10), app().rnorm(20))
         opaan = avg.LinearAnim(self.__node, 'opacity', 200, 1, 0)
         self.__anim = avg.ParallelAnim((diman, opaan), None, self.__cleanup)
         self.__anim.start()
@@ -154,10 +160,11 @@ class TextFeedback(LayeredSprite):
         self.__node = widgets.GameWordsNode(text=text, parent=self.layer,
                 pos=pos, fontsize=30, color=color, alignment='center')
 
-        diman = avg.LinearAnim(self.__node, 'fontsize', self.TRANSITION_TIME, 30, 60)
+        diman = avg.LinearAnim(self.__node, 'fontsize', self.TRANSITION_TIME,
+                app().ynorm(30), app().ynorm(60))
         opaan = avg.LinearAnim(self.__node, 'opacity', self.TRANSITION_TIME, 1, 0)
         offsan = avg.LinearAnim(self.__node, 'pos',
-                self.TRANSITION_TIME, pos, pos - Point2D(70, 70))
+                self.TRANSITION_TIME, pos, pos - app().pnorm(Point2D(70, 70)))
         self.__anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__cleanup)
         self.__anim.start()
 
@@ -168,11 +175,15 @@ class TextFeedback(LayeredSprite):
 
 class Bonus(LayeredSprite):
     TRANSITION_TIME = 200
-    OPACITY = 0.6
-    TRANSITION_ZOOM = 12
+    OPACITY = 0.8
+    TRANSITION_ZOOM = 18
     DROP_RADIUS_SQ = 900
 
     spawnTimestamp = {}
+    
+    STATE_BUSY = 'STATE_BUSY'
+    STATE_READY = 'STATE_READY'
+    STATE_DRAGGING = 'STATE_DRAGGING'
 
     def __init__(self, pos, icon, waitTime):
         if (self.__class__ in self.spawnTimestamp and
@@ -181,7 +192,11 @@ class Bonus(LayeredSprite):
         else:
             self.spawnTimestamp[self.__class__] = g_Player.getFrameTime()
 
-        self._node = avg.ImageNode(href=icon, pos=pos, parent=self.layer)
+        self._state = self.STATE_BUSY
+        self._tmr = g_Player.setInterval(100, self.__tick)
+        self._remainingTicks = consts.BONUS_AVAILABILITY_TICKS
+        
+        self._node = widgets.RIImage(href=icon, pos=pos, parent=self.layer)
         diman = avg.LinearAnim(self._node, 'size', self.TRANSITION_TIME,
                 self._node.getMediaSize() * self.TRANSITION_ZOOM,
                 self._node.getMediaSize())
@@ -198,6 +213,7 @@ class Bonus(LayeredSprite):
         return False
 
     def _suckIn(self, pos, callback):
+        self._state = self.STATE_BUSY
         diman = avg.LinearAnim(self._node, 'size', self.TRANSITION_TIME,
                 self._node.size, Point2D(1, 1))
         opaan = avg.LinearAnim(self._node, 'opacity', self.TRANSITION_TIME,
@@ -216,19 +232,18 @@ class Bonus(LayeredSprite):
         self._node.releaseEventCapture(self.__cursorid)
 
         if not self._trigger():
-            self.__disappear()
+            self._state = self.STATE_READY
         else:
             engine.SoundManager.play('bonus_drop.ogg')
 
     def __startDrag(self, event):
+        self._state = self.STATE_DRAGGING
         self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__release)
         self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, self.__move)
         self._node.setEventCapture(event.cursorid)
         self.__cursorid = event.cursorid
         self.__handlePos = event.pos - self._node.pos
 
-        self._anim.setStopCallback(None)
-        self._anim.abort()
         self._node.opacity = self.OPACITY
 
         return True
@@ -237,12 +252,25 @@ class Bonus(LayeredSprite):
         self._node.setEventHandler(avg.CURSORDOWN,
                 avg.MOUSE | avg.TOUCH, self.__startDrag)
 
-        self.__disappear()
+        self._state = self.STATE_READY
 
-    def __disappear(self):
-        self._anim = avg.fadeOut(self._node, 3000, self._destroy)
-
+    def __tick(self):
+        if self._state == self.STATE_READY:
+            self._remainingTicks -= 1
+            if self._remainingTicks < 20:
+                self.__blink()
+            if self._remainingTicks == 0:
+                self._state = self.STATE_BUSY
+                self._destroy()
+        
+    def __blink(self):
+        if self._node.opacity == 0:
+            self._node.opacity = self.OPACITY
+        else:
+            self._node.opacity = 0
+    
     def _destroy(self):
+        g_Player.clearInterval(self._tmr)
         del self._anim
         self._node.unlink(True)
 
@@ -296,7 +324,7 @@ class Missile(LayeredSprite):
                 color=self.COLOR, strokewidth=self.TRAIL_THICKNESS, parent=self.layer)
 
         self.nominalSpeedVec = ((self.targetPoint - self.initPoint).getNormalized() *
-                random.uniform(*self.speedRange) / consts.DELTAT_NORM_FACTOR)
+                app().rnorm(random.uniform(*self.speedRange)) / consts.DELTAT_NORM_FACTOR)
         self.__fade = None
         self.objects.append(self)
 
@@ -456,11 +484,11 @@ class Turret(Target):
                 widgets.Gauge.LAYOUT_HORIZONTAL,
                 pos=(0, 25), size=(20, 5), opacity=0.5, parent=self._node)
 
-        self.nukeAlert = avg.ImageNode(href='nuke_alert.png', pos=(0, 35),
+        self.nukeAlert = widgets.RIImage(href='nuke_alert.png', pos=(0, 35),
                 opacity=0, parent=self._node)
 
-        self.__ammo = ammo
-        self.__initialAmmo = ammo
+        self.__ammo = int(ammo)
+        self.__initialAmmo = self.__ammo
         self.__hasNuke = False
         self.__nukeAnim = None
         super(Turret, self).__init__(slot, self._node)
