@@ -328,12 +328,12 @@ class Missile(LayeredSprite):
         self.__fade = None
         self.objects.append(self)
 
-    def explode(self):
+    def explode(self, pos):
         if not self.__isExploding:
             self.__isExploding = True
             self.__fade = avg.fadeOut(
                     self.traj, self.explosionClass.DURATION / 2, self.__cleanup)
-            self.explosionClass(self.traj.pos2)
+            self.explosionClass(pos)
 
     def destroy(self):
         if self.__fade:
@@ -396,13 +396,13 @@ class Enemy(Missile):
                         TextFeedback(exp._node.pos, 'GREAT!', consts.COLOR_BLUE)
                     elif exp.hits == consts.NUKE_HITS:
                         TextFeedback(exp._node.pos, '** AWESOME **', consts.COLOR_BLUE)
-                    self.explode()
+                    self.explode(self.traj.pos2)
                     app().getState('game').enemyDestroyed(self)
 
         # Check if the enemy reached its destination
         v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
-            self.explode()
+            self.explode(self.targetPoint)
             app().getState('game').enemyDestroyed(self, self.__targetObj)
 
 
@@ -433,7 +433,7 @@ class TurretMissile(Missile):
     def collisionCheck(self, dt):
         v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
-            self.explode()
+            self.explode(self.targetPoint)
 
 
 class Target(LayeredSprite):

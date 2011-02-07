@@ -446,6 +446,7 @@ class Application(gameapp.GameApp):
 
     def __onFrame(self):
         if self.__currentState:
-            self.__currentState.update(g_Player.getFrameTime() - self.__elapsedTime)
+            dt = g_Player.getFrameTime() - self.__elapsedTime
+            self.__currentState.update(dt)
 
         self.__elapsedTime = g_Player.getFrameTime()
