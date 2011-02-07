@@ -80,6 +80,10 @@ class Start(engine.FadeGameState):
             if event.keystring == 's':
                 self.engine.changeState('game')
                 return True
+            if event.keystring == 'd':
+                import time
+                time.sleep(random.random())
+                return True
 
     def _update(self, dt):
         self.__hiscoreTab.update(dt)

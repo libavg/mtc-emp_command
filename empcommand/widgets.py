@@ -119,10 +119,12 @@ class MenuItem(avg.DivNode):
         if self.curState == 0:
             self.curContainer.x += self.__scrollSpeed * dt
             if self.curContainer.x > self.width:
+                self.curContainer.x = self.width
                 self.curState = 1
         else:
             self.curContainer.x -= self.__scrollSpeed * dt
             if self.curContainer.x < 0:
+                self.curContainer.x = 0
                 self.curState = 0
             
     def executeCallback(self):
