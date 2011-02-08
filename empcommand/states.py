@@ -358,7 +358,7 @@ class Game(engine.FadeGameState):
 
             Missile.update(dt)
             self.__checkGameStatus()
-            self.__spawnEnemies()
+            self.__spawnEnemies(dt)
 
     def _onTouch(self, event):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
@@ -463,6 +463,9 @@ class Game(engine.FadeGameState):
                 self.updateAmmoGauge()
 
     def __checkGameStatus(self):
+        if self.__gameState != self.GAMESTATE_PLAYING:
+            return
+            
         # Game end
         if not Target.filter(Turret):
             self.engine.changeState('gameover')
@@ -473,17 +476,16 @@ class Game(engine.FadeGameState):
             self.engine.changeState('results')
 
         # Switch to ultraspeed if there's nothing the player can do
-        if (self.__gameState == self.GAMESTATE_PLAYING and
-                self.__ammoGauge.getFVal() == 0 and
+        if (self.__ammoGauge.getFVal() == 0 and
                 not Missile.filter(TurretMissile) and
                 not Explosion.filter(EmpExplosion)):
             Missile.speedMul = consts.ULTRASPEED_MISSILE_MUL
             self.__changeGameState(self.GAMESTATE_ULTRASPEED)
 
-    def __spawnEnemies(self):
+    def __spawnEnemies(self, dt):
         if (self.__enemiesToSpawn and Target.objects and
                 (self.__gameState == self.GAMESTATE_ULTRASPEED or
-                random.randrange(0, 100) <= self.__wave)):
+                random.randrange(0, 140 * 17 / dt) <= self.__wave)):
             origin = Point2D(random.randrange(0, app().size.x), 0)
             target = random.choice(Target.objects)
             Enemy(origin, target, self.__wave)
@@ -498,6 +500,7 @@ class Game(engine.FadeGameState):
 
     def __onExit(self):
         self.engine.changeState('start')
+
 
 class Results(engine.FadeGameState):
     def _init(self):
