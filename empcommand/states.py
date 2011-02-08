@@ -210,7 +210,7 @@ class Game(engine.FadeGameState):
         self.gameData = {}
         self.nukeFired = False
         self.__score = 0
-        self.__enemiesToSpawn = 0
+        self.__enemiesSpawnTimeline = []
         self.__enemiesGone = 0
         self.__gameState = self.GAMESTATE_INITIALIZING
         self.__wave = 0
@@ -285,10 +285,9 @@ class Game(engine.FadeGameState):
         Missile.speedMul = 1 + app().difficultyLevel * 0.3
         self.nukeFired = False
         self.__wave += 1
-        self.__enemiesToSpawn = (self.__wave * consts.ENEMIES_WAVE_MULT *
-                (1 + app().difficultyLevel * 0.2))
+        self.__createSpawnTimeline()
         self.__enemiesGone = 0
-        self.gameData['initialEnemies'] = self.__enemiesToSpawn
+        self.gameData['initialEnemies'] = len(self.__enemiesSpawnTimeline)
 
         slots = [Point2D(x * app().xnorm(consts.SLOT_WIDTH), app().size.y - \
                 app().ynorm(60))
@@ -312,6 +311,7 @@ class Game(engine.FadeGameState):
         self.__enemiesGauge.setFVal(1)
 
         self.playTeaser('Wave %d' % self.__wave)
+        self.__waveTimer = g_Player.getFrameTime()
         self.__changeGameState(self.GAMESTATE_PLAYING)
         g_Log.trace(g_Log.APP, 'Entering wave %d: %s' % (
                 self.__wave, str(self.gameData)))
@@ -349,8 +349,8 @@ class Game(engine.FadeGameState):
                 ammoRatio = float(
                         self.gameData['ammoFired']) / self.gameData['initialAmmo']
                 self.__debugArea.text = (
-                        ('dt=%03dms ets=%d ar=%1.2f' % (dt,
-                            self.__enemiesToSpawn, ammoRatio)) + '<br/>' +
+                        ('dt=%03dms ar=%1.2f' % (dt,
+                            ammoRatio)) + '<br/>' +
                         str(self.gameData) + '<br/>' +
                         str(Target.objects) + '<br/>' +
                         '<br/>'.join(map(str, Missile.filter(Enemy))) + '<br/>' +
@@ -358,7 +358,7 @@ class Game(engine.FadeGameState):
 
             Missile.update(dt)
             self.__checkGameStatus()
-            self.__spawnEnemies(dt)
+            self.__spawnEnemy()
 
     def _onTouch(self, event):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
@@ -462,8 +462,27 @@ class Game(engine.FadeGameState):
                 # If we lose a turret, ammo stash sinks with it
                 self.updateAmmoGauge()
 
+    def __getWaveTime(self):
+        return g_Player.getFrameTime() - self.__waveTimer
+        
+    def __createSpawnTimeline(self):
+        nenemies =  int(self.__wave * consts.ENEMIES_WAVE_MULT * \
+                (1 + app().difficultyLevel * 0.2))
+        
+        self.__enemiesSpawnTimeline = []
+        avgSpawnTime = consts.WAVE_DURATION * 1000.0 / nenemies
+        absJitter = int(avgSpawnTime * consts.ENEMIES_SPAWNER_JITTER_FACTOR)
+        tm = 0
+        
+        for i in xrange(nenemies):
+            self.__enemiesSpawnTimeline.append(tm)
+            tm += avgSpawnTime + random.randrange(-absJitter, absJitter)
+        
+        g_Log.trace(g_Log.APP, 'Avg spawn time: %d Abs jitter: %d' % (avgSpawnTime,
+                absJitter))
+        
     def __checkGameStatus(self):
-        if self.__gameState != self.GAMESTATE_PLAYING:
+        if self.__gameState not in (self.GAMESTATE_PLAYING, self.GAMESTATE_ULTRASPEED):
             return
             
         # Game end
@@ -471,25 +490,26 @@ class Game(engine.FadeGameState):
             self.engine.changeState('gameover')
 
         # Wave end
-        if not self.__enemiesToSpawn and not Missile.filter(Enemy):
+        if not self.__enemiesSpawnTimeline and not Missile.filter(Enemy):
             g_Log.trace(g_Log.APP, 'Wave ended')
             self.engine.changeState('results')
 
         # Switch to ultraspeed if there's nothing the player can do
         if (self.__ammoGauge.getFVal() == 0 and
                 not Missile.filter(TurretMissile) and
-                not Explosion.filter(EmpExplosion)):
+                not Explosion.filter(EmpExplosion) and
+                self.__gameState == self.GAMESTATE_PLAYING):
             Missile.speedMul = consts.ULTRASPEED_MISSILE_MUL
             self.__changeGameState(self.GAMESTATE_ULTRASPEED)
 
-    def __spawnEnemies(self, dt):
-        if (self.__enemiesToSpawn and Target.objects and
+    def __spawnEnemy(self):
+        if (self.__enemiesSpawnTimeline and Target.objects and
                 (self.__gameState == self.GAMESTATE_ULTRASPEED or
-                random.randrange(0, 140 * 17 / dt) <= self.__wave)):
+                self.__enemiesSpawnTimeline[0] < self.__getWaveTime())):
+            self.__enemiesSpawnTimeline.pop(0)
             origin = Point2D(random.randrange(0, app().size.x), 0)
             target = random.choice(Target.objects)
             Enemy(origin, target, self.__wave)
-            self.__enemiesToSpawn -= 1
 
     def __teaserTimer(self):
         g_Player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
