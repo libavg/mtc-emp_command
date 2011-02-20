@@ -392,7 +392,7 @@ class Missile(LayeredSprite):
 
 
 class Enemy(Missile):
-    speedRange = [0.3, 0.5]
+    speedRange = [0.3, 0.7]
     explosionClass = EnemyExplosion
     COLOR = consts.COLOR_RED
 

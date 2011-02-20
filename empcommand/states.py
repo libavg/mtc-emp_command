@@ -495,7 +495,7 @@ class Game(engine.FadeGameState):
             return
             
         # Game end
-        if not Target.filter(Turret):
+        if not Target.filter(City):
             self.engine.changeState('gameover')
 
         # Wave end
