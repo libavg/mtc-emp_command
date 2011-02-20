@@ -28,7 +28,7 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
-VERSION = '0.2T'
+VERSION = '0.3'
 
 import os
 from libavg import avg, AVGAppUtil
@@ -86,7 +86,6 @@ class EmpCommand(engine.Application):
 
         self.setupPointer(widgets.CrossHair())
         self.bootstrap('start')
-
 
 def createPreviewNode(maxSize):
     filename = os.path.join(AVGAppUtil.getMediaDir(__file__), 'preview.png')

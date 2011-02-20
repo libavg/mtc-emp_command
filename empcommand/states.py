@@ -64,9 +64,6 @@ class Start(engine.FadeGameState):
         
         self.registerBgTrack('theme_start.ogg')
         
-        widgets.GameWordsNode(text='PRERELEASE TEST - NOT FOR DISTRIBUTION', fontsize=24,
-                color='553333', pos=(20, 20), parent=self)
-        
     def _resume(self):
         self.__hiscoreTab.refresh()
     
@@ -288,12 +285,16 @@ class Game(engine.FadeGameState):
         self.setScore(0)
 
     def nextWave(self):
-        Missile.speedMul = 1 + (app().difficultyLevel - 1) * 0.3
+        Missile.speedMul = 1 + (app().difficultyLevel - 1) * consts.SPEEDMUL_OFFSET_LEVEL
         self.nukeFired = False
         self.__wave += 1
-        self.__createSpawnTimeline()
+        
+        nenemies =  int(self.__wave * consts.ENEMIES_WAVE_MULT * \
+                (1 + app().difficultyLevel * 0.2))
+        
+        self.__createSpawnTimeline(nenemies)
         self.__enemiesGone = 0
-        self.gameData['initialEnemies'] = len(self.__enemiesSpawnTimeline)
+        self.gameData['initialEnemies'] = nenemies
 
         slots = [Point2D(x * app().xnorm(consts.SLOT_WIDTH), app().size.y - \
                 app().ynorm(60))
@@ -302,7 +303,7 @@ class Game(engine.FadeGameState):
 
         random.shuffle(slots)
 
-        self.gameData['initialAmmo'] = self.__wave * consts.AMMO_WAVE_MULT
+        self.gameData['initialAmmo'] = int(nenemies * consts.AMMO_ENEMIES_MULT)
         self.gameData['initialCities'] = consts.CITIES
 
         for i in xrange(0, consts.TURRETS_AMOUNT):
@@ -448,6 +449,9 @@ class Game(engine.FadeGameState):
         if afv < 0.2 and not self.__lowAmmoNotified:
             self.__ammoGauge.setColor(consts.COLOR_RED)
             engine.SoundManager.play('low_ammo.ogg', volume=0.5)
+            TextFeedback(self.__ammoGauge.pos + self.__ammoGauge.size / 2 + \
+                    Point2D(app().xnorm(250), 0),
+                    'Low ammo!', consts.COLOR_RED)
             self.__lowAmmoNotified = True
         self.__ammoGauge.setFVal(afv)
 
@@ -473,10 +477,7 @@ class Game(engine.FadeGameState):
     def __getWaveTime(self):
         return g_Player.getFrameTime() - self.__waveTimer
         
-    def __createSpawnTimeline(self):
-        nenemies =  int(self.__wave * consts.ENEMIES_WAVE_MULT * \
-                (1 + app().difficultyLevel * 0.2))
-        
+    def __createSpawnTimeline(self, nenemies):
         self.__enemiesSpawnTimeline = []
         avgSpawnTime = consts.WAVE_DURATION * 1000.0 / nenemies
         absJitter = int(avgSpawnTime * consts.ENEMIES_SPAWNER_JITTER_FACTOR)

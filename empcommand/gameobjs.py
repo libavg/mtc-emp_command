@@ -30,6 +30,7 @@
 
 
 import random
+import math
 
 from libavg import avg, Point2D
 from empcommand import app
@@ -277,6 +278,7 @@ class Bonus(LayeredSprite):
             self._node.opacity = 0
     
     def _destroy(self):
+        self._state = self.STATE_BUSY
         g_Player.clearInterval(self._tmr)
         del self._anim
         self._node.unlink(True)
@@ -326,6 +328,7 @@ class Missile(LayeredSprite):
         self.initPoint = initPoint
         self.targetPoint = targetPoint
         self.__isExploding = False
+        self.__lastSpeedVector = Point2D(0, 0)
 
         self.traj = avg.LineNode(pos1=self.initPoint, pos2=self.initPoint,
                 color=self.COLOR, strokewidth=self.TRAIL_THICKNESS, parent=self.layer)
@@ -344,6 +347,7 @@ class Missile(LayeredSprite):
 
     def destroy(self):
         if self.__fade:
+            self.__fade.setStopCallback(None)
             self.__fade.abort()
 
         self.__cleanup()
@@ -368,8 +372,11 @@ class Missile(LayeredSprite):
         self.objects.remove(self)
 
     def __repr__(self):
-        return '%s %s -> (%d, %d)' % (self.__class__.__name__, self.initPoint,
-                int(self.traj.pos2.x), int(self.traj.pos2.y))
+        return '%s %s -> (%d, %d) v=%.2f' % (self.__class__.__name__,
+                self.initPoint,
+                int(self.traj.pos2.x), int(self.traj.pos2.y),
+                math.sqrt(self.__lastSpeedVector.x ** 2 + self.__lastSpeedVector.y ** 2),
+                )
 
     @classmethod
     def filter(cls, subClass):
@@ -379,12 +386,13 @@ class Missile(LayeredSprite):
     def update(cls, dt):
         for m in cls.objects:
             if not m.__isExploding:
-                m.traj.pos2 += m.speedVector(dt)
+                m.__lastSpeedVector = m.speedVector(dt)
+                m.traj.pos2 += m.__lastSpeedVector
                 m.collisionCheck(dt)
 
 
 class Enemy(Missile):
-    speedRange = [0.5, 1]
+    speedRange = [0.3, 0.5]
     explosionClass = EnemyExplosion
     COLOR = consts.COLOR_RED
 
@@ -412,15 +420,8 @@ class Enemy(Missile):
             self.explode(self.targetPoint)
             app().getState('game').enemyDestroyed(self, self.__targetObj)
 
-
     def getSpeedFactor(self):
-        if self.traj.pos2.y < consts.ENEMY_FULLSPEED_Y:
-            myspeed = float(self.traj.pos2.y) / consts.ENEMY_FULLSPEED_Y / 2.0 + 0.5
-        else:
-            myspeed = 1
-
-        myspeed *= 1 + self.__level / 10.0
-        return myspeed
+        return 1 + self.__level * consts.WAVE_ENEMY_SPEED_INCREASE_FACTOR
 
 
 class TurretMissile(Missile):
@@ -525,7 +526,6 @@ class Turret(Target):
         self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
         if self.__ammo == 5:
             self.__ammoGauge.setColor(consts.COLOR_RED)
-            TextFeedback(self._node.pos, 'Low ammo!', consts.COLOR_RED)
         elif self.__ammo > 5:
             self.__ammoGauge.setColor(consts.COLOR_BLUE)
 
