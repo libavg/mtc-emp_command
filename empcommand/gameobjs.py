@@ -206,6 +206,7 @@ class Bonus(LayeredSprite):
                 Point2D(pos) - self._node.getMediaSize() * self.TRANSITION_ZOOM / 2, pos)
         self._anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__ready)
         self._anim.start()
+        self.__cursorid = None
 
         engine.SoundManager.play('bonus_alert.ogg')
 
@@ -224,29 +225,35 @@ class Bonus(LayeredSprite):
         self._anim.start()
 
     def __move(self, event):
-        self._node.pos = event.pos - self.__handlePos
+        if self.__cursorid == event.cursorid:
+            self._node.pos = event.pos - self.__handlePos
 
     def __release(self, event):
-        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, None)
-        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, None)
-        self._node.releaseEventCapture(self.__cursorid)
+        if self.__cursorid == event.cursorid:
+            self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, None)
+            self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, None)
+            self._node.releaseEventCapture(self.__cursorid)
+            self.__cursorid = None
 
-        if not self._trigger():
-            self._state = self.STATE_READY
-        else:
-            engine.SoundManager.play('bonus_drop.ogg')
+            if not self._trigger():
+                self._state = self.STATE_READY
+            else:
+                engine.SoundManager.play('bonus_drop.ogg')
 
     def __startDrag(self, event):
-        self._state = self.STATE_DRAGGING
-        self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__release)
-        self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, self.__move)
-        self._node.setEventCapture(event.cursorid)
-        self.__cursorid = event.cursorid
-        self.__handlePos = event.pos - self._node.pos
+        if self.__cursorid is None:
+            self._node.setEventCapture(event.cursorid)
+            self._state = self.STATE_DRAGGING
+            self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
+                    self.__release)
+            self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
+                    self.__move)
+            self.__cursorid = event.cursorid
+            self.__handlePos = event.pos - self._node.pos
 
-        self._node.opacity = self.OPACITY
+            self._node.opacity = self.OPACITY
 
-        return True
+            return True
 
     def __ready(self):
         self._node.setEventHandler(avg.CURSORDOWN,
@@ -518,7 +525,6 @@ class Turret(Target):
         self.__ammoGauge.setFVal(float(self.__ammo) / self.__initialAmmo)
         if self.__ammo == 5:
             self.__ammoGauge.setColor(consts.COLOR_RED)
-            engine.SoundManager.play('low_ammo.ogg')
             TextFeedback(self._node.pos, 'Low ammo!', consts.COLOR_RED)
         elif self.__ammo > 5:
             self.__ammoGauge.setColor(consts.COLOR_BLUE)

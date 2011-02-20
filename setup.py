@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from distutils.core import setup
+from empcommand import VERSION
 
 setup(
     name='EMPCommand',
-    version='0.2',
+    version=VERSION,
     author='OXullo Intersecans',
     author_email='x@brainrapers.org',
     url='http://www.brainrapers.org/empcommand/',

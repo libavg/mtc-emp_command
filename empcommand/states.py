@@ -34,7 +34,7 @@ import random
 import math
 
 from libavg import avg, Point2D, AVGAppUtil
-from empcommand import app
+from empcommand import app, VERSION
 
 import engine
 import consts
@@ -113,6 +113,9 @@ class About(engine.FadeGameState):
                 parent=self)
         about.add(widgets.GameWordsNode(text='EMPCommand', color=consts.COLOR_BLUE,
                 fontsize=60))
+        about.add(widgets.GameWordsNode(
+                text='VERSION: %s' % VERSION,
+                color=consts.COLOR_BLUE, fontsize=8))
         about.add(widgets.GameWordsNode(text='© 2010-2011 OXullo Intersecans',
                 color='ffffff', fontsize=25))
         about.add(widgets.GameWordsNode(text='http://www.brainrapers.org/empcommand/',
@@ -240,6 +243,8 @@ class Game(engine.FadeGameState):
                 size=(app().xnorm(15), app().ynorm(300)), parent=self)
         self.__enemiesGauge.addLabel('ENMY')
         self.__enemiesGauge.setOpacity(0.3)
+        
+        self.__lowAmmoNotified = False
 
         self.registerBgTrack('theme_game.ogg', maxVolume=0.3)
 
@@ -276,13 +281,14 @@ class Game(engine.FadeGameState):
             obj.destroy()
         
         self.__quitSwitch.reset()
+        self.__lowAmmoNotified = False
 
     def setNewGame(self):
         self.__wave = 0
         self.setScore(0)
 
     def nextWave(self):
-        Missile.speedMul = 1 + app().difficultyLevel * 0.3
+        Missile.speedMul = 1 + (app().difficultyLevel - 1) * 0.3
         self.nukeFired = False
         self.__wave += 1
         self.__createSpawnTimeline()
@@ -383,10 +389,10 @@ class Game(engine.FadeGameState):
                 TouchFeedback(event.pos, consts.COLOR_BLUE)
             else:
                 TouchFeedback(event.pos, consts.COLOR_RED)
-                engine.SoundManager.play('buzz.ogg')
+                engine.SoundManager.play('buzz.ogg', volume=0.5)
         else:
             TouchFeedback(event.pos, consts.COLOR_RED)
-            engine.SoundManager.play('buzz.ogg')
+            engine.SoundManager.play('buzz.ogg', volume=0.5)
             TextFeedback(event.pos, 'AMMO DEPLETED!', consts.COLOR_RED)
 
     def _onKeyDown(self, event):
@@ -439,8 +445,10 @@ class Game(engine.FadeGameState):
 
         fdammo = self.gameData['initialAmmo'] - ammo
         afv = 1 - float(fdammo) / self.gameData['initialAmmo']
-        if afv < 0.2:
+        if afv < 0.2 and not self.__lowAmmoNotified:
             self.__ammoGauge.setColor(consts.COLOR_RED)
+            engine.SoundManager.play('low_ammo.ogg', volume=0.5)
+            self.__lowAmmoNotified = True
         self.__ammoGauge.setFVal(afv)
 
     def enemyDestroyed(self, enemy, target=None):
@@ -472,7 +480,7 @@ class Game(engine.FadeGameState):
         self.__enemiesSpawnTimeline = []
         avgSpawnTime = consts.WAVE_DURATION * 1000.0 / nenemies
         absJitter = int(avgSpawnTime * consts.ENEMIES_SPAWNER_JITTER_FACTOR)
-        tm = 0
+        tm = consts.WAVE_PREAMBLE * 1000
         
         for i in xrange(nenemies):
             self.__enemiesSpawnTimeline.append(tm)

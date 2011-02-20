@@ -211,7 +211,7 @@ class HiscoreTab(avg.DivNode):
 
         self.__panningAnim = None
 
-        self.__capturedCursorId = None
+        self.__cursorid = None
         self.__initialTouchPos = None
         self.__lastYSpeed = 0
         self.__scrollLock = False
@@ -255,7 +255,7 @@ class HiscoreTab(avg.DivNode):
         self.__stage.y = self.height
 
     def update(self, dt):
-        if self.__capturedCursorId is None and abs(self.__lastYSpeed) > 0.1:
+        if self.__cursorid is None and abs(self.__lastYSpeed) > 0.1:
             self.__stage.y += self.__lastYSpeed * self.__speedFactor
             self.__lastYSpeed /= self.SMOOTH_FACTOR
             self.__clampPan()
@@ -271,15 +271,15 @@ class HiscoreTab(avg.DivNode):
             self.__stage.y = -self.__stage.height
 
     def __onTouchDown(self, event):
-        if self.__capturedCursorId is None:
+        if self.__cursorid is None:
             self.__scrollLock = True
             self.setEventCapture(event.cursorid)
-            self.__capturedCursorId = event.cursorid
+            self.__cursorid = event.cursorid
             self.__initialTouchPos = event.pos
             self.__lastYSpeed = 0
 
     def __onMotion(self, event):
-        if self.__capturedCursorId:
+        if self.__cursorid == event.cursorid:
             if abs(event.speed.y) > self.MAX_SPEED:
                 self.__lastYSpeed = event.speed.y / event.speed.y * self.MAX_SPEED
             else:
@@ -288,9 +288,9 @@ class HiscoreTab(avg.DivNode):
             self.__clampPan()
 
     def __onTouchUp(self, event):
-        if self.__capturedCursorId:
-            self.releaseEventCapture(self.__capturedCursorId)
-            self.__capturedCursorId = None
+        if self.__cursorid == event.cursorid:
+            self.releaseEventCapture(self.__cursorid)
+            self.__cursorid = None
             self.__initialTouchPos = None
             self.__scrollLock = False
 
@@ -300,7 +300,7 @@ class Key(avg.DivNode):
         super(Key, self).__init__(*args, **kwargs)
         self.__char = char
         self.__cb = cb
-        self.__capturedId = None
+        self.__cursorid = None
 
         self.__bg = avg.RectNode(size=self.size, opacity=0, fillcolor=consts.COLOR_BLUE,
                 fillopacity=1, parent=self)
@@ -320,17 +320,17 @@ class Key(avg.DivNode):
         self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onTouchUp)
 
     def __onTouchDown(self, event):
-        if self.__capturedId is None:
+        if self.__cursorid is None:
             self.setEventCapture(event.cursorid)
-            self.__capturedId = event.cursorid
+            self.__cursorid = event.cursorid
             self.__bg.fillcolor = consts.COLOR_RED
             self.__wnode.color = consts.COLOR_BLUE
 
     def __onTouchUp(self, event):
-        if self.__capturedId == event.cursorid:
+        if self.__cursorid == event.cursorid:
             self.__bg.fillcolor = consts.COLOR_BLUE
             self.__wnode.color = consts.COLOR_RED
-            self.__capturedId = None
+            self.__cursorid = None
             self.releaseEventCapture(event.cursorid)
             self.__cb(self.__char)
 

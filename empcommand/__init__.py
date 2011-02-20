@@ -28,6 +28,8 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
+VERSION = '0.2T'
+
 import os
 from libavg import avg, AVGAppUtil
 
@@ -42,7 +44,7 @@ import consts
 g_Player = avg.Player.get()
 g_Log = avg.Logger.get()
 
-__all__ = ['app', 'apps', 'EmpCommand']
+__all__ = ['app', 'apps', 'EmpCommand', 'VERSION']
 
 
 class EmpCommand(engine.Application):
