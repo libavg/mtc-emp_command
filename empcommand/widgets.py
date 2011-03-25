@@ -92,7 +92,9 @@ class MenuItem(avg.DivNode):
 
         self.wnode = GameWordsNode(text=text, fontsize=40, alignment='center',
                 color=consts.COLOR_RED, parent=self)
-        self.size = (width, self.wnode.getMediaSize().y)
+        border = self.wnode.getMediaSize().y / 6
+        self.wnode.y = border
+        self.size = (width, self.wnode.getMediaSize().y + border * 2)
         self.bg.size = self.size
         self.wnode.x = width / 2
         self.cb = cb

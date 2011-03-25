@@ -21,7 +21,7 @@ Turrets and cities locations are always shuffled. Missile launches are automated
 the closest turret (which has ammo) to your target request launches.
 
 
-** Game license:
+** Game license (sources):
 
   EMP Command: a missile command multitouch clone
   Copyright (c) 2010-2011 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
@@ -59,59 +59,19 @@ EMP Command is based on libavg (http://www.libavg.de) and it's written in Python
 
 ** Font:
 
-EMPRetro v1.0, by OXullo Intersecans <x@brainrapers.org>
-Released under OFL 1.1 ( see COPYING or http://scripts.sil.org/cms/scripts/page.php?item_id=OFL_web )
+EMPRetro v1.0
+Copyleft 2011 OXullo Intersecans <x@brainrapers.org>
+License: OFL 1.1
+( see COPYING or http://scripts.sil.org/cms/scripts/page.php?item_id=OFL_web )
 
 Inspired by "uni 05_53" by Craig Kroeger (http://www.miniml.com/)
 
 
 ** SFX Attributions:
 
-Files: empcommand/media/snd/enemy_exp1.ogg
-       empcommand/media/snd/enemy_exp3.ogg
-       empcommand/media/snd/target_destroy.ogg
-       empcommand/media/snd/nuke_launch.ogg
-License: public-domain
- Published by mediacollege.com
- http://www.mediacollege.com/downloads/sound-effects/explosion/
-
-Files: empcommand/media/snd/target_hit.ogg
-Comment: http://www.freesound.org/samplesViewSingle.php?id=18384
-Copyright: 2006 inferno
-License: CC-sampling+
- 
-Files: empcommand/media/snd/enemy_exp2.ogg
-Comment: http://www.freesound.org/samplesViewSingle.php?id=73005
-Copyright: 2009 Benboncan
-License: CC-sampling+
-
-Files: empcommand/media/snd/enemy_exp4.ogg
-Comment: http://www.freesound.org/samplesViewSingle.php?id=21410
-Copyright: 2006 Heigh-hoo
-License: CC-sampling+
-
-Files: empcommand/media/snd/enemy_exp5.ogg
-Comment: http://www.freesound.org/samplesViewSingle.php?id=21410
-Copyright: 2009 steveygos93
-License: CC-sampling+
-
-Files: empcommand/media/snd/low_ammo.ogg
-Comment: http://www.freesound.org/samplesViewSingle.php?id=17468
-Copyright: 2010 cognito perceptu
-License: CC-sampling+
-
-Files: empcommand/media/snd/bonus_alert.ogg empcommand/media/snd/bonus_drop.ogg
-Comment: http://www.freesound.org/samplesViewSingle.php?id=38494
-Copyright: 2007 Corsica_S
-License: CC-sampling+
-
-Files: empcommand/media/snd/nuke.ogg
-Comment: http://www.freesound.org/samplesViewSingle.php?id=11125
-Copyright: 2005 jnr hacksaw
-License: CC-sampling+
-
-
-CC-sampling+ license can be found here: http://creativecommons.org/licenses/sampling+/1.0/
+Copyleft 2010-2011 OXullo Intersecans <x@brainrapers.org>
+License: CC BY-SA 3.0 (Creative commons Attribution Share-alike)
+( see COPYING or http://creativecommons.org/licenses/by-sa/3.0/ )
 
 
 ** Theme loops:
@@ -119,11 +79,9 @@ CC-sampling+ license can be found here: http://creativecommons.org/licenses/samp
 theme_start.ogg, theme_results.ogg, theme_game.ogg: original EMPCommand tunes
 theme_about.ogg: excerpt from spore 'itticus'
 
-Copyleft 2010-2011 OXullo Intersecans  <x@brainrapers.org>
-CC BY-SA 3.0 (Creative commons Attribution Share-alike)
-
-
-CC BY-SA license can be found here: http://creativecommons.org/licenses/by-sa/3.0/
+Copyleft 2010-2011 OXullo Intersecans <x@brainrapers.org>
+License: CC BY-SA 3.0 (Creative commons Attribution Share-alike)
+( see COPYING or http://creativecommons.org/licenses/by-sa/3.0/ )
 
 
 ** Acknowledgements / thanks to:
