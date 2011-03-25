@@ -59,7 +59,10 @@ EMP Command is based on libavg (http://www.libavg.de) and it's written in Python
 
 ** Font:
 
-uni 05_53 by Craig Kroeger (http://www.miniml.com/)
+EMPRetro v1.0, by OXullo Intersecans <x@brainrapers.org>
+Released under OFL 1.1 ( see COPYING or http://scripts.sil.org/cms/scripts/page.php?item_id=OFL_web )
+
+Inspired by "uni 05_53" by Craig Kroeger (http://www.miniml.com/)
 
 
 ** SFX Attributions:
@@ -68,8 +71,8 @@ Files: empcommand/media/snd/enemy_exp1.ogg
        empcommand/media/snd/enemy_exp3.ogg
        empcommand/media/snd/target_destroy.ogg
        empcommand/media/snd/nuke_launch.ogg
-Copyright: Mediacollege.com
 License: public-domain
+ Published by mediacollege.com
  http://www.mediacollege.com/downloads/sound-effects/explosion/
 
 Files: empcommand/media/snd/target_hit.ogg
@@ -133,3 +136,9 @@ c-base - MTC testing / appChooser showcase during Transmediale 2010-2011
 
 DrPetter and his SFXR tool
     ( http://www.drpetter.se/project_sfxr.html )
+
+George Williams - FontForge
+    ( http://fontforge.sourceforge.net/ )
+
+Inkscape authors
+    ( http://inkscape.org/ )

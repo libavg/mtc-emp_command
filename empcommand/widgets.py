@@ -42,7 +42,7 @@ import consts
 
 class GameWordsNode(avg.WordsNode):
     def __init__(self, *args, **kwargs):
-        kwargs['font'] = 'uni 05_53'
+        kwargs['font'] = 'EMPRetro'
         kwargs['sensitive'] = False
         if 'fontsize' in kwargs:
             kwargs['fontsize'] = max(app().ynorm(kwargs['fontsize']), 7)
