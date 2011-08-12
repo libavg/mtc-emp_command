@@ -31,7 +31,7 @@
 VERSION = '0.3'
 
 import os
-from libavg import avg, AVGAppUtil
+from libavg import avg, utils
 
 def app():
     return EmpCommand.get()
@@ -88,9 +88,9 @@ class EmpCommand(engine.Application):
         self.bootstrap('start')
 
 def createPreviewNode(maxSize):
-    filename = os.path.join(AVGAppUtil.getMediaDir(__file__), 'preview.png')
+    filename = os.path.join(utils.getMediaDir(__file__), 'preview.png')
 
-    return AVGAppUtil.createImagePreviewNode(maxSize, absHref = filename)
+    return utils.createImagePreviewNode(maxSize, absHref = filename)
 
 
 apps = (

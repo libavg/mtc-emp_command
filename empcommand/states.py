@@ -33,7 +33,7 @@ import os
 import random
 import math
 
-from libavg import avg, Point2D, AVGAppUtil
+from libavg import avg, Point2D, utils
 from empcommand import app, VERSION
 
 import engine
