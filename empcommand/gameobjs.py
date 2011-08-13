@@ -280,7 +280,10 @@ class Bonus(LayeredSprite):
     def _destroy(self):
         self._state = self.STATE_BUSY
         g_Player.clearInterval(self._tmr)
-        del self._anim
+        if self._anim:
+            self._anim.abort()
+            del self._anim
+            self._anim = None
         self._node.unlink(True)
 
 
