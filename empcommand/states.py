@@ -47,7 +47,7 @@ g_Log = avg.Logger.get()
 
 class Start(engine.FadeGameState):
     def _init(self):
-        im = avg.ImageNode(href='logo.png', mipmap=True, parent=self)
+        im = avg.ImageNode(href='logo.png', parent=self)
         xfactor = app().size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
         im.pos = (0, app().size.y - im.size.y)
@@ -102,7 +102,7 @@ class Start(engine.FadeGameState):
 
 class About(engine.FadeGameState):
     def _init(self):
-        im = avg.ImageNode(href='logo.png', mipmap=True, parent=self)
+        im = avg.ImageNode(href='logo.png', parent=self)
         xfactor = app().size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
         
