@@ -41,17 +41,19 @@ import consts
 
 
 class GameWordsNode(avg.WordsNode):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None, *args, **kwargs):
         kwargs['font'] = 'EMPRetro'
         kwargs['sensitive'] = False
         if 'fontsize' in kwargs:
             kwargs['fontsize'] = max(app().ynorm(kwargs['fontsize']), 7)
         super(GameWordsNode, self).__init__(*args, **kwargs)
+        self.registerInstance(self,parent)
 
 
 class VLayout(avg.DivNode):
-    def __init__(self, interleave, width, *args, **kwargs):
+    def __init__(self, interleave, width, parent=None, *args, **kwargs):
         super(VLayout, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
         self.interleave = app().ynorm(interleave)
         self.size = Point2D(width, 1)
         self.yoffs = 0
@@ -71,8 +73,9 @@ class VLayout(avg.DivNode):
 
 
 class Tri(avg.DivNode):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None, *args, **kwargs):
         super(Tri, self).__init__(*args, **kwargs)
+        self.registerInstance(self,parent)
 
         self.pnode = avg.PolygonNode(
                 pos=(
@@ -85,8 +88,10 @@ class Tri(avg.DivNode):
 
 class MenuItem(avg.DivNode):
     SCROLL_SPEED = 0.8
-    def __init__(self, text, width, cb, *args, **kwargs):
+    def __init__(self, text, width, cb, parent=None, *args, **kwargs):
         super(MenuItem, self).__init__(*args, **kwargs)
+        self.registerInstance(self,parent)
+
         self.bg = avg.RectNode(opacity=0, fillopacity=0,
                 fillcolor=consts.COLOR_BLUE, parent=self)
 
@@ -153,8 +158,9 @@ class DifficultyMenuItem(MenuItem):
         
 
 class Menu(avg.DivNode):
-    def __init__(self, onPlay, onAbout, onDiffChanged, onQuit, *args, **kwargs):
+    def __init__(self, onPlay, onAbout, onDiffChanged, onQuit, parent=None, *args,  **kwargs):
         super(Menu, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
         
         self.layout = VLayout(interleave=10, width=self.width, parent=self)
         self.layout.add(MenuItem(text='Play', width=self.width, cb=onPlay))
@@ -194,8 +200,9 @@ class HiscoreTab(avg.DivNode):
     SMOOTH_FACTOR = 1.2
     MAX_SPEED = 6
 
-    def __init__(self, db, *args, **kwargs):
+    def __init__(self, db, parent=None, *args, **kwargs):
         super(HiscoreTab, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
         self.db = db
         self.__nodes = []
         self.crop = True
@@ -298,8 +305,9 @@ class HiscoreTab(avg.DivNode):
 
 
 class Key(avg.DivNode):
-    def __init__(self, char, cb, *args, **kwargs):
+    def __init__(self, char, cb, parent=None, *args, **kwargs):
         super(Key, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
         self.__char = char
         self.__cb = cb
         self.__cursorid = None
@@ -338,8 +346,9 @@ class Key(avg.DivNode):
 
 
 class Keyboard(avg.DivNode):
-    def __init__(self, keySize, padding, cb, *args, **kwargs):
+    def __init__(self, keySize, padding, cb, parent=None, *args, **kwargs):
         super(Keyboard, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
 
         self.__cb = cb
 
@@ -379,8 +388,9 @@ class Keyboard(avg.DivNode):
 
 
 class PlayerName(avg.DivNode):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None, *args, **kwargs):
         super(PlayerName, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
 
         self.__name = GameWordsNode(fontsize=150, color=consts.COLOR_RED, text='',
                 alignment='center', pos=(self.size.x / 2, 0), parent=self)
@@ -407,8 +417,9 @@ class Gauge(avg.DivNode):
     LAYOUT_VERTICAL = 'vertical'
     LAYOUT_HORIZONTAL = 'horizontal'
 
-    def __init__(self, color, layout, *args, **kwargs):
+    def __init__(self, color, layout, parent=None, *args, **kwargs):
         super(Gauge, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
 
         self.__layout = layout
         self.__levelContainer = avg.DivNode(parent=self)
@@ -475,9 +486,10 @@ class CrossHair(avg.DivNode):
 
 
 class Clouds(avg.ImageNode):
-    def __init__(self, maxOpacity, *args, **kwargs):
+    def __init__(self, maxOpacity, parent=None, *args, **kwargs):
         kwargs['href'] = 'clouds.png'
         super(Clouds, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
         self.opacity = 0
         self.maxOpacity = maxOpacity
     
@@ -488,8 +500,9 @@ class Clouds(avg.ImageNode):
 
 
 class RIImage(avg.ImageNode):
-    def __init__(self, lock='x', **kwargs):
+    def __init__(self, lock='x', parent=None, **kwargs):
         super(RIImage, self).__init__(**kwargs)
+        self.registerInstance(self, parent)
         if lock == 'x':
             nf = app().xnorm
         else:
@@ -501,8 +514,9 @@ class RIImage(avg.ImageNode):
 class ExitButton(avg.DivNode):
     UNSET_ICON_OPACITY = 0.3
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None, *args, **kwargs):
         super(ExitButton, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
 
         self.__fill = RIImage(href='exit_fill.png', parent=self)
         self.__icon = RIImage(href='exit.png', parent=self)
@@ -518,8 +532,9 @@ class ExitButton(avg.DivNode):
 
 class QuitSwitch(avg.DivNode):
     BUTTON_RIGHT_XLIMIT = 148
-    def __init__(self, cb, *args, **kwargs):
+    def __init__(self, cb, parent=None, *args, **kwargs):
         super(QuitSwitch, self).__init__(*args, **kwargs)
+        self.registerInstance(self, parent)
 
         self.__slider = RIImage(href='exit_slider.png', parent=self)
         self.__button = ExitButton(parent=self)
