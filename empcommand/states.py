@@ -56,7 +56,7 @@ class Start(engine.FadeGameState):
         
         self.__menu = widgets.Menu(onPlay=self.__onPlay, onAbout=self.__onAbout,
                 onDiffChanged=self.__onDiffChanged, onQuit=self.__onQuit,
-                width=app().xnorm(350), parent=rightPane)
+                size=app().pnorm((350, 300)), parent=rightPane)
 
         self.__hiscoreTab = widgets.HiscoreTab(db=app().scoreDatabase,
                 pos=app().pnorm((0, 350)), size=app().pnorm((350, 270)),
