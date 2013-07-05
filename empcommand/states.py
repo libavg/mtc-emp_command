@@ -29,20 +29,17 @@
 # expressed or implied, of OXullo Intersecans.
 
 
-import os
 import random
 import math
 
-from libavg import avg, Point2D, utils
+from libavg import avg, Point2D, player
+
 from empcommand import app, VERSION
 
 import engine
 import consts
 import widgets
 from gameobjs import *
-
-g_Player = avg.Player.get()
-g_Log = avg.Logger.get()
 
 
 class Start(engine.FadeGameState):
@@ -113,7 +110,7 @@ class About(engine.FadeGameState):
         about.add(widgets.GameWordsNode(
                 text='VERSION: %s' % VERSION,
                 color=consts.COLOR_BLUE, fontsize=8))
-        about.add(widgets.GameWordsNode(text='© 2010-2011 OXullo Intersecans',
+        about.add(widgets.GameWordsNode(text='© 2010-2013 OXullo Intersecans',
                 color='ffffff', fontsize=25))
         about.add(widgets.GameWordsNode(text='http://www.brainrapers.org/empcommand/',
                 color=consts.COLOR_RED, fontsize=18))
@@ -318,9 +315,9 @@ class Game(engine.FadeGameState):
         self.__enemiesGauge.setFVal(1)
 
         self.playTeaser('Wave %d' % self.__wave)
-        self.__waveTimer = g_Player.getFrameTime()
+        self.__waveTimer = player.getFrameTime()
         self.__changeGameState(self.GAMESTATE_PLAYING)
-        g_Log.trace(g_Log.APP, 'Entering wave %d: %s' % (
+        avg.logger.trace(avg.logger.APP, 'Entering wave %d: %s' % (
                 self.__wave, str(self.gameData)))
 
     def playTeaser(self, text):
@@ -475,7 +472,7 @@ class Game(engine.FadeGameState):
                 self.updateAmmoGauge()
 
     def __getWaveTime(self):
-        return g_Player.getFrameTime() - self.__waveTimer
+        return player.getFrameTime() - self.__waveTimer
         
     def __createSpawnTimeline(self, nenemies):
         self.__enemiesSpawnTimeline = []
@@ -487,7 +484,7 @@ class Game(engine.FadeGameState):
             self.__enemiesSpawnTimeline.append(tm)
             tm += avgSpawnTime + random.randrange(-absJitter, absJitter)
         
-        g_Log.trace(g_Log.APP, 'Avg spawn time: %d Abs jitter: %d' % (avgSpawnTime,
+        avg.logger.trace(avg.logger.APP, 'Avg spawn time: %d Abs jitter: %d' % (avgSpawnTime,
                 absJitter))
         
     def __checkGameStatus(self):
@@ -500,7 +497,7 @@ class Game(engine.FadeGameState):
 
         # Wave end
         if not self.__enemiesSpawnTimeline and not Missile.filter(Enemy):
-            g_Log.trace(g_Log.APP, 'Wave ended')
+            avg.logger.trace(avg.logger.APP, 'Wave ended')
             self.engine.changeState('results')
 
         # Switch to ultraspeed if there's nothing the player can do
@@ -521,10 +518,11 @@ class Game(engine.FadeGameState):
             Enemy(origin, target, self.__wave)
 
     def __teaserTimer(self):
-        g_Player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
+        player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
 
     def __changeGameState(self, newState):
-        g_Log.trace(g_Log.APP, 'Gamestate %s -> %s' % (self.__gameState, newState))
+        avg.logger.trace(avg.logger.APP, 'Gamestate %s -> %s' % (self.__gameState,
+                newState))
         self.__gameState = newState
 
     def __onExit(self):
@@ -589,9 +587,9 @@ class Results(engine.FadeGameState):
         self.__resultsParagraph.text += row + '<br/>'
 
         if self.rows:
-            g_Player.setTimeout(consts.RESULTS_ADDROW_DELAY, self.__addResultRow)
+            player.setTimeout(consts.RESULTS_ADDROW_DELAY, self.__addResultRow)
         else:
-            g_Player.setTimeout(consts.RESULTS_DELAY, self.returnToGame)
+            player.setTimeout(consts.RESULTS_DELAY, self.returnToGame)
 
     def __getAccuracy(self):
         mfired = self.engine.getState('game').gameData['ammoFired']
@@ -619,10 +617,10 @@ class GameOver(engine.FadeGameState):
         db = app().scoreDatabase
         if not db.isFull() or db.data[-1].points < \
                 self.engine.getState('game').getScore():
-            g_Player.setTimeout(consts.GAMEOVER_DELAY / 2,
+            player.setTimeout(consts.GAMEOVER_DELAY / 2,
                 lambda: self.engine.changeState('hiscore'))
         else:
-            g_Player.setTimeout(consts.GAMEOVER_DELAY,
+            player.setTimeout(consts.GAMEOVER_DELAY,
                     lambda: self.engine.changeState('start'))
 
 
@@ -679,7 +677,7 @@ class Hiscore(engine.FadeGameState):
 
     def __clearTimeout(self):
         if self.__timeout is not None:
-            g_Player.clearInterval(self.__timeout)
+            player.clearInterval(self.__timeout)
 
     def __resetTimeout(self):
         def fire():
@@ -688,7 +686,7 @@ class Hiscore(engine.FadeGameState):
             self.engine.changeState('start')
 
         self.__clearTimeout()
-        self.__timeout = g_Player.setTimeout(self.TIMEOUT, fire)
+        self.__timeout = player.setTimeout(self.TIMEOUT, fire)
 
     def __onKeyTouch(self, key):
         self.__resetTimeout()

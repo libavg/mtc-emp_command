@@ -32,15 +32,13 @@
 import random
 import math
 
-from libavg import avg, Point2D
+from libavg import avg, Point2D, player
 from empcommand import app
 
 import engine
 import widgets
 import consts
 
-g_Player = avg.Player.get()
-g_Log = avg.Logger.get()
 
 __all__ = ['Explosion', 'Target', 'Missile', 'TextFeedback', 'TouchFeedback', 'Bonus',
         'Turret', 'City', 'Enemy', 'TurretMissile', 'AmmoBonus', 'NukeBonus',
@@ -188,13 +186,13 @@ class Bonus(LayeredSprite):
 
     def __init__(self, pos, icon, waitTime):
         if (self.__class__ in self.spawnTimestamp and
-                g_Player.getFrameTime() - self.spawnTimestamp[self.__class__] < waitTime):
+                player.getFrameTime() - self.spawnTimestamp[self.__class__] < waitTime):
             return
         else:
-            self.spawnTimestamp[self.__class__] = g_Player.getFrameTime()
+            self.spawnTimestamp[self.__class__] = player.getFrameTime()
 
         self._state = self.STATE_BUSY
-        self._tmr = g_Player.setInterval(100, self.__tick)
+        self._tmr = player.setInterval(100, self.__tick)
         self._remainingTicks = consts.BONUS_AVAILABILITY_TICKS
         
         self._node = widgets.RIImage(href=icon, pos=pos, parent=self.layer)
@@ -279,7 +277,7 @@ class Bonus(LayeredSprite):
     
     def _destroy(self):
         self._state = self.STATE_BUSY
-        g_Player.clearInterval(self._tmr)
+        player.clearInterval(self._tmr)
         if self._anim:
             self._anim.abort()
             del self._anim

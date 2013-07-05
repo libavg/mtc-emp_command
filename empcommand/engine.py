@@ -31,16 +31,10 @@
 
 import os
 import math
-import pickle
 import random
-import atexit
-import libavg
-from libavg import avg, Point2D, gameapp
+from libavg import avg, Point2D, gameapp, player
 
 import consts
-
-g_Player = avg.Player.get()
-g_Log = avg.Logger.get()
 
 
 class NotImplementedError(Exception):
@@ -161,8 +155,10 @@ class HiscoreDatabase(object):
         return True
 
 class GameState(avg.DivNode):
-    def __init__(self, *args, **kwargs):
-        super(GameState, self).__init__(*args, **kwargs)
+    def __init__(self, parent=None, **kwargs):
+        super(GameState, self).__init__(**kwargs)
+        self.registerInstance(self, parent)
+
         self._isFrozen = False
         self._bgTrack = None
         self._maxBgTrackVolume = 1
@@ -322,11 +318,11 @@ class Application(gameapp.GameApp):
         self._parentNode.appendChild(instance)
         instance.sensitive = False
         self.__pointer = instance
-        g_Player.showCursor(False)
+        player.showCursor(False)
 
     @property
     def size(self):
-        return g_Player.getRootNode().size
+        return player.getRootNode().size
 
     def rnorm(self, value):
         return (value * math.sqrt((self.size.x ** 2 + self.size.y ** 2) /
@@ -360,7 +356,7 @@ class Application(gameapp.GameApp):
         return nseq
         
     def registerState(self, handle, state):
-        g_Log.trace(g_Log.APP, 'Registering state %s: %s' % (handle, state))
+        avg.logger.trace(avg.logger.APP, 'Registering state %s: %s' % (handle, state))
         self._parentNode.appendChild(state)
         state.registerEngine(self)
         self.__registeredStates[handle] = state
@@ -381,7 +377,7 @@ class Application(gameapp.GameApp):
             self.__currentState.leave()
 
         newState.enter()
-        g_Log.trace(g_Log.APP, 'Changing state %s -> %s' % (self.__currentState,
+        avg.logger.trace(avg.logger.APP, 'Changing state %s -> %s' % (self.__currentState,
                 newState))
 
         self.__currentState = newState
@@ -411,12 +407,10 @@ class Application(gameapp.GameApp):
             self.__pointer.refresh()
 
     def _enter(self):
-        self._parentNode.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-                self.onTouch)
-        self._parentNode.setEventHandler(avg.CURSORMOTION, avg.MOUSE,
-                self.onMouseMotion)
+        self._parentNode.subscribe(avg.Node.CURSOR_DOWN, self.onTouch)
+        self._parentNode.subscribe(avg.Node.CURSOR_MOTION, self.onMouseMotion)
 
-        self.__tickTimer = g_Player.setOnFrameHandler(self.__onFrame)
+        self.__tickTimer = player.setOnFrameHandler(self.__onFrame)
 
         if self.__currentState:
             self.__currentState._resume()
@@ -424,11 +418,9 @@ class Application(gameapp.GameApp):
             self.changeState(self.__entryHandle)
 
     def _leave(self):
-        self._parentNode.setEventHandler(avg.CURSORDOWN,
-                avg.MOUSE | avg.TOUCH, None)
-        self._parentNode.setEventHandler(avg.CURSORMOTION,
-                avg.MOUSE, None)
-        g_Player.clearInterval(self.__tickTimer)
+        self._parentNode.unsubscribe(avg.Node.CURSOR_DOWN, self.onTouch)
+        self._parentNode.unsubscribe(avg.Node.CURSOR_MOTION, self.onMouseMotion)
+        player.clearInterval(self.__tickTimer)
         self.__tickTimer = None
 
         if self.__currentState:
@@ -446,7 +438,7 @@ class Application(gameapp.GameApp):
 
     def __onFrame(self):
         if self.__currentState:
-            dt = g_Player.getFrameTime() - self.__elapsedTime
+            dt = player.getFrameTime() - self.__elapsedTime
             self.__currentState.update(dt)
 
-        self.__elapsedTime = g_Player.getFrameTime()
+        self.__elapsedTime = player.getFrameTime()

@@ -29,8 +29,6 @@
 # expressed or implied, of OXullo Intersecans.
 
 
-import os
-import math
 import random
 from libavg import avg, Point2D
 
@@ -41,24 +39,24 @@ import consts
 
 
 class GameWordsNode(avg.WordsNode):
-    def __init__(self, parent=None, *args, **kwargs):
+    def __init__(self, parent=None, **kwargs):
         kwargs['font'] = 'EMPRetro'
         kwargs['sensitive'] = False
         if 'fontsize' in kwargs:
             kwargs['fontsize'] = max(app().ynorm(kwargs['fontsize']), 7)
-        super(GameWordsNode, self).__init__(*args, **kwargs)
-        self.registerInstance(self,parent)
+        super(GameWordsNode, self).__init__(**kwargs)
+        self.registerInstance(self, parent)
 
 
 class VLayout(avg.DivNode):
-    def __init__(self, interleave, width, parent=None, *args, **kwargs):
-        super(VLayout, self).__init__(*args, **kwargs)
+    def __init__(self, interleave, width, parent=None, **kwargs):
+        super(VLayout, self).__init__(**kwargs)
         self.registerInstance(self, parent)
         self.interleave = app().ynorm(interleave)
         self.size = Point2D(width, 1)
         self.yoffs = 0
         self.objs = []
-    
+
     def add(self, obj, offset=0):
         self.appendChild(obj)
         self.objs.append(obj)
@@ -73,9 +71,9 @@ class VLayout(avg.DivNode):
 
 
 class Tri(avg.DivNode):
-    def __init__(self, parent=None, *args, **kwargs):
-        super(Tri, self).__init__(*args, **kwargs)
-        self.registerInstance(self,parent)
+    def __init__(self, parent=None, **kwargs):
+        super(Tri, self).__init__(**kwargs)
+        self.registerInstance(self, parent)
 
         self.pnode = avg.PolygonNode(
                 pos=(
@@ -88,9 +86,9 @@ class Tri(avg.DivNode):
 
 class MenuItem(avg.DivNode):
     SCROLL_SPEED = 0.8
-    def __init__(self, text, width, cb, parent=None, *args, **kwargs):
-        super(MenuItem, self).__init__(*args, **kwargs)
-        self.registerInstance(self,parent)
+    def __init__(self, text, width, cb, parent=None, **kwargs):
+        super(MenuItem, self).__init__(**kwargs)
+        self.registerInstance(self, parent)
 
         self.bg = avg.RectNode(opacity=0, fillopacity=0,
                 fillcolor=consts.COLOR_BLUE, parent=self)
@@ -103,8 +101,7 @@ class MenuItem(avg.DivNode):
         self.bg.size = self.size
         self.wnode.x = width / 2
         self.cb = cb
-        self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-                lambda e: self.executeCallback())
+        self.subscribe(self.CURSOR_DOWN, lambda e: self.executeCallback())
         
         self.curContainer = avg.DivNode(sensitive=False, parent=self)
         avg.LineNode(pos1=(0, 0), pos2=(0, self.height), color=consts.COLOR_RED,
@@ -141,9 +138,9 @@ class MenuItem(avg.DivNode):
 
 class DifficultyMenuItem(MenuItem):
     LABELS = ['Easy', 'Normal', 'Hard']
-    def __init__(self, width, cb, *args, **kwargs):
-        super(DifficultyMenuItem, self).__init__(text='X', width=width, cb=cb,
-                *args, **kwargs)
+    def __init__(self, width, cb, parent=None, **kwargs):
+        super(DifficultyMenuItem, self).__init__(text='X', width=width, cb=cb, **kwargs)
+        self.registerInstance(self, parent)
         self.__lptr = 1
         self.__setText()
     
@@ -158,8 +155,8 @@ class DifficultyMenuItem(MenuItem):
         
 
 class Menu(avg.DivNode):
-    def __init__(self, onPlay, onAbout, onDiffChanged, onQuit, parent=None, *args,  **kwargs):
-        super(Menu, self).__init__(*args, **kwargs)
+    def __init__(self, onPlay, onAbout, onDiffChanged, onQuit, parent=None, **kwargs):
+        super(Menu, self).__init__(**kwargs)
         self.registerInstance(self, parent)
         
         self.layout = VLayout(interleave=10, width=self.width, parent=self)
@@ -167,6 +164,7 @@ class Menu(avg.DivNode):
         self.layout.add(DifficultyMenuItem(width=self.width, cb=onDiffChanged))
         self.layout.add(MenuItem(text='About', width=self.width, cb=onAbout))
         self.layout.add(MenuItem(text='Quit', width=self.width, cb=onQuit))
+        self.height = self.layout.height
         
         self.setActive(0, fb=False)
     
@@ -200,9 +198,10 @@ class HiscoreTab(avg.DivNode):
     SMOOTH_FACTOR = 1.2
     MAX_SPEED = 6
 
-    def __init__(self, db, parent=None, *args, **kwargs):
-        super(HiscoreTab, self).__init__(*args, **kwargs)
+    def __init__(self, db, parent=None, **kwargs):
+        super(HiscoreTab, self).__init__(**kwargs)
         self.registerInstance(self, parent)
+
         self.db = db
         self.__nodes = []
         self.crop = True
@@ -215,7 +214,7 @@ class HiscoreTab(avg.DivNode):
         avg.LineNode(pos1=(0, yp), pos2=(self.width, yp),
                 strokewidth=1, color=consts.COLOR_BLUE, parent=self)
 
-        self.__mask = avg.DivNode(parent=self, y=yp, crop=True)
+        self.__mask = avg.DivNode(parent=self, y=yp, size=self.size, crop=True)
         self.__stage = avg.DivNode(parent=self.__mask)
 
         self.__panningAnim = None
@@ -225,9 +224,9 @@ class HiscoreTab(avg.DivNode):
         self.__lastYSpeed = 0
         self.__scrollLock = False
         self.__speedFactor = app().ynorm(self.SPEED_FACTOR)
-        self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH, self.__onTouchDown)
-        self.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, self.__onMotion)
-        self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onTouchUp)
+        self.subscribe(self.CURSOR_DOWN, self.__onTouchDown)
+        self.subscribe(self.CURSOR_MOTION, self.__onMotion)
+        self.subscribe(self.CURSOR_UP, self.__onTouchUp)
 
     def toCardinal(self, num):
         if num % 10 == 1:
@@ -305,8 +304,8 @@ class HiscoreTab(avg.DivNode):
 
 
 class Key(avg.DivNode):
-    def __init__(self, char, cb, parent=None, *args, **kwargs):
-        super(Key, self).__init__(*args, **kwargs)
+    def __init__(self, char, cb, parent=None, **kwargs):
+        super(Key, self).__init__(**kwargs)
         self.registerInstance(self, parent)
         self.__char = char
         self.__cb = cb
@@ -346,10 +345,10 @@ class Key(avg.DivNode):
 
 
 class Keyboard(avg.DivNode):
-    def __init__(self, keySize, padding, cb, parent=None, *args, **kwargs):
-        super(Keyboard, self).__init__(*args, **kwargs)
+    def __init__(self, keySize, padding, cb, parent=None, **kwargs):
+        super(Keyboard, self).__init__(**kwargs)
         self.registerInstance(self, parent)
-
+         
         self.__cb = cb
 
         rows = [
@@ -388,8 +387,8 @@ class Keyboard(avg.DivNode):
 
 
 class PlayerName(avg.DivNode):
-    def __init__(self, parent=None, *args, **kwargs):
-        super(PlayerName, self).__init__(*args, **kwargs)
+    def __init__(self, parent=None, **kwargs):
+        super(PlayerName, self).__init__(**kwargs)
         self.registerInstance(self, parent)
 
         self.__name = GameWordsNode(fontsize=150, color=consts.COLOR_RED, text='',
@@ -417,8 +416,8 @@ class Gauge(avg.DivNode):
     LAYOUT_VERTICAL = 'vertical'
     LAYOUT_HORIZONTAL = 'horizontal'
 
-    def __init__(self, color, layout, parent=None, *args, **kwargs):
-        super(Gauge, self).__init__(*args, **kwargs)
+    def __init__(self, color, layout, parent=None, **kwargs):
+        super(Gauge, self).__init__(**kwargs)
         self.registerInstance(self, parent)
 
         self.__layout = layout
@@ -466,8 +465,9 @@ class CrossHair(avg.DivNode):
     
     warningy = -1
     
-    def __init__(self, *args, **kwargs):
-        super(CrossHair, self).__init__(*args, **kwargs)
+    def __init__(self, parent=None, **kwargs):
+        super(CrossHair, self).__init__(**kwargs)
+        self.registerInstance(self, parent)
         self.__l1 = avg.LineNode(pos1=(10, 0), pos2=(10, 20), strokewidth=4, parent=self)
         self.__l2 = avg.LineNode(pos1=(0, 10), pos2=(20, 10), strokewidth=4, parent=self)
         self.size = (20, 20)
@@ -486,10 +486,11 @@ class CrossHair(avg.DivNode):
 
 
 class Clouds(avg.ImageNode):
-    def __init__(self, maxOpacity, parent=None, *args, **kwargs):
+    def __init__(self, maxOpacity, parent=None, **kwargs):
         kwargs['href'] = 'clouds.png'
-        super(Clouds, self).__init__(*args, **kwargs)
+        super(Clouds, self).__init__(**kwargs)
         self.registerInstance(self, parent)
+
         self.opacity = 0
         self.maxOpacity = maxOpacity
     
@@ -514,8 +515,8 @@ class RIImage(avg.ImageNode):
 class ExitButton(avg.DivNode):
     UNSET_ICON_OPACITY = 0.3
 
-    def __init__(self, parent=None, *args, **kwargs):
-        super(ExitButton, self).__init__(*args, **kwargs)
+    def __init__(self, parent=None, **kwargs):
+        super(ExitButton, self).__init__(**kwargs)
         self.registerInstance(self, parent)
 
         self.__fill = RIImage(href='exit_fill.png', parent=self)
@@ -532,8 +533,8 @@ class ExitButton(avg.DivNode):
 
 class QuitSwitch(avg.DivNode):
     BUTTON_RIGHT_XLIMIT = 148
-    def __init__(self, cb, parent=None, *args, **kwargs):
-        super(QuitSwitch, self).__init__(*args, **kwargs)
+    def __init__(self, cb, parent=None, **kwargs):
+        super(QuitSwitch, self).__init__(**kwargs)
         self.registerInstance(self, parent)
 
         self.__slider = RIImage(href='exit_slider.png', parent=self)

@@ -39,10 +39,6 @@ def app():
 import engine
 import states
 import widgets
-import consts
-
-g_Player = avg.Player.get()
-g_Log = avg.Logger.get()
 
 __all__ = ['app', 'apps', 'EmpCommand', 'VERSION']
 
