@@ -224,30 +224,19 @@ class Bonus(LayeredSprite):
         self._anim.start()
 
     def __move(self, event):
-        if self.__cursorid == event.cursorid:
-            self._node.pos = event.pos - self.__handlePos
+        self._node.pos = event.pos - self.__handlePos
 
     def __release(self, event):
-        if self.__cursorid == event.cursorid:
-            self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH, None)
-            self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, None)
-            self._node.releaseEventCapture(self.__cursorid)
-            self.__cursorid = None
-
-            if not self._trigger():
-                self._state = self.STATE_READY
-            else:
-                engine.SoundManager.play('bonus_drop.ogg')
+        if not self._trigger():
+            self._state = self.STATE_READY
+        else:
+            engine.SoundManager.play('bonus_drop.ogg')
 
     def __startDrag(self, event):
-        if self.__cursorid is None:
-            self._node.setEventCapture(event.cursorid)
+        if self._state != self.STATE_DRAGGING:
+            event.contact.subscribe(avg.Contact.CURSOR_MOTION, self.__move)
+            event.contact.subscribe(avg.Contact.CURSOR_UP, self.__release)
             self._state = self.STATE_DRAGGING
-            self._node.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH,
-                    self.__release)
-            self._node.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
-                    self.__move)
-            self.__cursorid = event.cursorid
             self.__handlePos = event.pos - self._node.pos
 
             self._node.opacity = self.OPACITY
@@ -255,8 +244,7 @@ class Bonus(LayeredSprite):
             return True
 
     def __ready(self):
-        self._node.setEventHandler(avg.CURSORDOWN,
-                avg.MOUSE | avg.TOUCH, self.__startDrag)
+        self._node.subscribe(self._node.CURSOR_DOWN, self.__startDrag)
 
         self._state = self.STATE_READY
 

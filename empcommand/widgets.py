@@ -325,8 +325,8 @@ class Key(avg.DivNode):
         else:
             self.__wnode.text = char
 
-        self.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH, self.__onTouchDown)
-        self.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onTouchUp)
+        self.subscribe(self.CURSOR_DOWN, self.__onTouchDown)
+        self.subscribe(self.CURSOR_UP, self.__onTouchUp)
 
     def __onTouchDown(self, event):
         if self.__cursorid is None:
@@ -545,11 +545,9 @@ class QuitSwitch(avg.DivNode):
         self.__cb = cb
         self.__xlimit = app().xnorm(self.BUTTON_RIGHT_XLIMIT)
         
-        self.__button.setEventHandler(avg.CURSORDOWN, avg.MOUSE | avg.TOUCH,
-                self.__onDown)
-        self.__button.setEventHandler(avg.CURSORUP, avg.MOUSE | avg.TOUCH, self.__onUp)
-        self.__button.setEventHandler(avg.CURSORMOTION, avg.MOUSE | avg.TOUCH,
-                self.__onMotion)
+        self.__button.subscribe(self.CURSOR_DOWN, self.__onDown)
+        self.__button.subscribe(self.CURSOR_UP, self.__onUp)
+        self.__button.subscribe(self.CURSOR_MOTION, self.__onMotion)
     
         self.reset()
         
