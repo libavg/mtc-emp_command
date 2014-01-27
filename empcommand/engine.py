@@ -32,7 +32,9 @@
 import os
 import math
 import random
-from libavg import avg, Point2D, gameapp, player
+from libavg import avg, Point2D, player
+
+import gameapp
 
 import consts
 
@@ -113,23 +115,26 @@ class ScoreEntry(object):
 class HiscoreDatabase(object):
     def __init__(self, app, maxSize=20):
         self.__maxSize = maxSize
-        self.__ds = app.initDatastore(tag='hiscore',
-                initialData=self.__generateShit,
-                validator=self.__validate)
+#        self.__ds = app.initDatastore(tag='hiscore',
+#                initialData=self.__generateShit,
+#                validator=self.__validate)
 
     def isFull(self):
-        return len(self.__ds.data) >= self.__maxSize
+        return False
+#        return len(self.__ds.data) >= self.__maxSize
 
     def addScore(self, score, sync=True):
-        self.__ds.data.append(score)
-        self.__ds.data = sorted(self.__ds.data, reverse=True)[0:self.__maxSize]
+        pass
+#        self.__ds.data.append(score)
+#        self.__ds.data = sorted(self.__ds.data, reverse=True)[0:self.__maxSize]
 
-        if sync:
-            self.__ds.commit()
+#        if sync:
+#            self.__ds.commit()
 
     @property
     def data(self):
-        return self.__ds.data
+        return []
+#        return self.__ds.data
 
     def __generateShit(self):
         import random
@@ -356,7 +361,7 @@ class Application(gameapp.GameApp):
         return nseq
         
     def registerState(self, handle, state):
-        avg.logger.trace(avg.logger.APP, 'Registering state %s: %s' % (handle, state))
+#        avg.logger.trace(avg.logger.APP, 'Registering state %s: %s' % (handle, state))
         self._parentNode.appendChild(state)
         state.registerEngine(self)
         self.__registeredStates[handle] = state
@@ -377,8 +382,8 @@ class Application(gameapp.GameApp):
             self.__currentState.leave()
 
         newState.enter()
-        avg.logger.trace(avg.logger.APP, 'Changing state %s -> %s' % (self.__currentState,
-                newState))
+#        avg.logger.trace(avg.logger.APP, 'Changing state %s -> %s' % (self.__currentState,
+#                newState))
 
         self.__currentState = newState
 
@@ -427,9 +432,6 @@ class Application(gameapp.GameApp):
             self.__currentState.leave()
             self.__currentState = None
 
-    def _getPackagePath(self):
-        return __file__
-        
     def __getState(self, handle):
         if handle in self.__registeredStates:
             return self.__registeredStates[handle]

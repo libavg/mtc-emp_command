@@ -33,7 +33,7 @@ import random
 import math
 
 from libavg import avg, Point2D, player
-from empcommand import app
+from gameapp import app
 
 import engine
 import widgets
