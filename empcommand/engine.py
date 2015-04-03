@@ -32,7 +32,7 @@
 import os
 import math
 import random
-from libavg import avg, Point2D, player
+from libavg import avg, Point2D, player, persist
 
 import gameapp
 
@@ -115,26 +115,23 @@ class ScoreEntry(object):
 class HiscoreDatabase(object):
     def __init__(self, app, maxSize=20):
         self.__maxSize = maxSize
-#        self.__ds = app.initDatastore(tag='hiscore',
-#                initialData=self.__generateShit,
-#                validator=self.__validate)
+        self.__ds = persist.UserPersistentData(appName='empcommand', fileName='hiscore',
+               initialData=self.__generateShit,
+               validator=self.__validate)
 
     def isFull(self):
-        return False
-#        return len(self.__ds.data) >= self.__maxSize
+        return len(self.__ds.data) >= self.__maxSize
 
     def addScore(self, score, sync=True):
-        pass
-#        self.__ds.data.append(score)
-#        self.__ds.data = sorted(self.__ds.data, reverse=True)[0:self.__maxSize]
+        self.__ds.data.append(score)
+        self.__ds.data = sorted(self.__ds.data, reverse=True)[0:self.__maxSize]
 
-#        if sync:
-#            self.__ds.commit()
+        if sync:
+            self.__ds.commit()
 
     @property
     def data(self):
-        return []
-#        return self.__ds.data
+        return self.__ds.data
 
     def __generateShit(self):
         import random
