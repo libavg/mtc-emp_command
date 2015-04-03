@@ -33,7 +33,7 @@ import sys
 try:
     import empcommand
 except ImportError:
-    sys.path = ['..', '/usr/share/games'] + sys.path
+    sys.path = ['.', '..', '/usr/share/games'] + sys.path
     import empcommand
 
 if __name__ == '__main__':
