@@ -28,7 +28,7 @@
 # authors and should not be interpreted as representing official policies, either 
 # expressed or implied, of OXullo Intersecans.
 
-VERSION = '0.3'
+VERSION = '1.0'
 
 import libavg
 
