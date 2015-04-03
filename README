@@ -24,7 +24,7 @@ the closest turret (which has ammo) to your target request launches.
 ** Game license (sources):
 
   EMP Command: a missile command multitouch clone
-  Copyright (c) 2010-2011 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+  Copyright (c) 2010-2015 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
   
   Redistribution and use in source and binary forms, with or without modification, are
   permitted provided that the following conditions are met:
@@ -60,7 +60,7 @@ EMP Command is based on libavg (http://www.libavg.de) and it's written in Python
 ** Font:
 
 EMPRetro v1.0
-Copyleft 2011 OXullo Intersecans <x@brainrapers.org>
+Copyleft 2011-2015 OXullo Intersecans <x@brainrapers.org>
 License: OFL 1.1
 ( see COPYING or http://scripts.sil.org/cms/scripts/page.php?item_id=OFL_web )
 
@@ -69,7 +69,7 @@ Inspired by "uni 05_53" by Craig Kroeger (http://www.miniml.com/)
 
 ** SFX Attributions:
 
-Copyleft 2010-2011 OXullo Intersecans <x@brainrapers.org>
+Copyleft 2010-2015 OXullo Intersecans <x@brainrapers.org>
 License: CC BY-SA 3.0 (Creative commons Attribution Share-alike)
 ( see COPYING or http://creativecommons.org/licenses/by-sa/3.0/ )
 
@@ -79,7 +79,7 @@ License: CC BY-SA 3.0 (Creative commons Attribution Share-alike)
 theme_start.ogg, theme_results.ogg, theme_game.ogg: original EMPCommand tunes
 theme_about.ogg: excerpt from spore 'itticus'
 
-Copyleft 2010-2011 OXullo Intersecans <x@brainrapers.org>
+Copyleft 2010-2015 OXullo Intersecans <x@brainrapers.org>
 License: CC BY-SA 3.0 (Creative commons Attribution Share-alike)
 ( see COPYING or http://creativecommons.org/licenses/by-sa/3.0/ )
 
