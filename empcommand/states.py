@@ -95,7 +95,7 @@ class Start(engine.FadeGameState):
         app().difficultyLevel = ndiff
         
     def __onQuit(self):
-        app().quit()
+        player.stop()
 
 
 class About(engine.FadeGameState):
