@@ -32,7 +32,7 @@
 import os
 import math
 import random
-from libavg import avg, Point2D, player, persist
+from libavg import avg, Point2D, player
 
 import gameapp
 
@@ -92,69 +92,6 @@ class SoundManager(object):
 
         cls.objects[fileName].append(mySound)
 
-
-class ScoreEntry(object):
-    def __init__(self, name, points):
-        if type(points) not in (int, float):
-            raise ValueError('Points must be expressed in int/float '
-                    '(%s, %s)' % (points, type(points)))
-        self.name = name
-        self.points = points
-
-    def __cmp__(self, other):
-        if type(other) != ScoreEntry:
-            raise TypeError('Cannot compare ScoreEntry with %s' %
-                other.__class__.__name__)
-        return cmp(self.points, other.points)
-
-    def __repr__(self):
-        return '<%s: name=%s points=%d>' % (self.__class__.__name__,
-                self.name, self.points)
-
-
-class HiscoreDatabase(object):
-    def __init__(self, app, maxSize=20):
-        self.__maxSize = maxSize
-        self.__ds = persist.UserPersistentData(appName='empcommand', fileName='hiscore',
-               initialData=self.__generateShit,
-               validator=self.__validate)
-
-    def isFull(self):
-        return len(self.__ds.data) >= self.__maxSize
-
-    def addScore(self, score, sync=True):
-        self.__ds.data.append(score)
-        self.__ds.data = sorted(self.__ds.data, reverse=True)[0:self.__maxSize]
-
-        if sync:
-            self.__ds.commit()
-
-    @property
-    def data(self):
-        return self.__ds.data
-
-    def __generateShit(self):
-        import random
-        data = []
-        rng = 'QWERTYUIOPASDFGHJKLZXCVBNM'
-        for i in xrange(self.__maxSize):
-            data.append(
-                    ScoreEntry(random.choice(rng) + \
-                        random.choice(rng) + \
-                        random.choice(rng),
-                        random.randrange(80, 300) * 50))
-        
-        return sorted(data, reverse=True)
-
-    def __validate(self, lst):
-        if type(lst) != list or not lst:
-            return False
-        
-        for se in lst:
-            if not isinstance(se, ScoreEntry):
-                return False
-        
-        return True
 
 class GameState(avg.DivNode):
     def __init__(self, parent=None, **kwargs):

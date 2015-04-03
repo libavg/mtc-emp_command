@@ -39,6 +39,7 @@ def app():
 import engine
 import states
 import widgets
+import score
 
 __all__ = ['app', 'apps', 'EmpCommand', 'VERSION']
 
@@ -54,7 +55,7 @@ class EmpCommand(engine.Application):
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
                 size=self.size, parent=self._parentNode)
 
-        self.scoreDatabase = engine.HiscoreDatabase(self)
+        self.scoreDatabase = score.HiscoreDatabase(self)
 
         engine.SoundManager.allocate('bonus_alert.ogg')
         engine.SoundManager.allocate('bonus_drop.ogg')

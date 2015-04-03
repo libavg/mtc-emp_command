@@ -40,6 +40,7 @@ from gameapp import app
 import engine
 import consts
 import widgets
+import score
 from gameobjs import *
 
 
@@ -674,7 +675,7 @@ class Hiscore(engine.FadeGameState):
             name = '???'
 
         app().scoreDatabase.addScore(
-                engine.ScoreEntry(name, self.engine.getState('game').getScore()))
+                score.ScoreEntry(name, self.engine.getState('game').getScore()))
 
     def __clearTimeout(self):
         if self.__timeout is not None:
