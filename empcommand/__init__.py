@@ -30,7 +30,7 @@
 
 VERSION = '0.3'
 
-from libavg import avg
+import libavg
 
 import engine
 import states
@@ -42,9 +42,6 @@ class EmpCommand(engine.GameDiv):
         self.difficultyLevel = 1
         
         engine.SoundManager.init(self)
-
-        avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
-                size=self.size, parent=self)
 
         self.scoreDatabase = score.HiscoreDatabase(self)
 
@@ -74,3 +71,7 @@ class EmpCommand(engine.GameDiv):
 
         self.setupPointer(widgets.CrossHair())
         self.sequencer.changeState('start')
+
+
+def run():
+    libavg.app.App().run(EmpCommand(), app_resolution='', app_fullscreen='true')

@@ -42,5 +42,7 @@ if __name__ == '__main__':
         import cProfile
         cProfile.run('empcommand.EmpCommand.start()')
     else:
-        libavg.app.App().run(empcommand.EmpCommand())
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        empcommand.run()
 

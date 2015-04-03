@@ -337,6 +337,8 @@ class Normaliser(object):
 
 class GameDiv(libavg.app.MainDiv):
     def onInit(self):
+        self.__setupMultitouch()
+
         avg.WordsNode.addFontDir(libavg.utils.getMediaDir(__file__, 'fonts'))
         self.mediadir = libavg.utils.getMediaDir(__file__)
 
@@ -379,6 +381,27 @@ class GameDiv(libavg.app.MainDiv):
         self.sequencer.update(dt)
 
         self.__elapsedTime = player.getFrameTime()
+
+    def __setupMultitouch(self):
+        if libavg.app.instance.settings.getBoolean('multitouch_enabled'):
+            return
+
+        import platform
+
+        if platform.system() == 'Linux':
+            os.putenv('AVG_MULTITOUCH_DRIVER', 'XINPUT')
+        elif platform.system() == 'Windows':
+            os.putenv('AVG_MULTITOUCH_DRIVER', 'WIN7TOUCH')
+        else:
+            os.putenv('AVG_MULTITOUCH_DRIVER', 'TUIO')
+
+        try:
+            libavg.player.enableMultitouch()
+        except Exception, e:
+            logger.warning('Cannot enable native multitouch driver, falling back to TUIO')
+
+            os.putenv('AVG_MULTITOUCH_DRIVER', 'TUIO')
+            libavg.player.enableMultitouch()
 
 
 norm = Normaliser()
