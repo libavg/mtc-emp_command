@@ -33,9 +33,8 @@ import os
 import math
 import random
 import logging
+import libavg
 from libavg import avg, Point2D, player
-
-import gameapp
 
 import consts
 
@@ -264,12 +263,9 @@ class Sequencer(object):
         if self.__currentState:
             raise EngineError('The game has been already bootstrapped')
 
-        self.__entryHandle = handle
+        self.changeState(handle)
 
     def changeState(self, handle):
-        if self.__entryHandle is None:
-            raise EngineError('Game must be bootstrapped before changing its state')
-
         newState = self.__getState(handle)
 
         if self.__currentState:
@@ -282,17 +278,6 @@ class Sequencer(object):
 
     def getState(self, handle):
         return self.__getState(handle)
-
-    def pause(self):
-        if self.__currentState:
-            self.__currentState.leave()
-            self.__currentState = None
-
-    def resume(self):
-        if self.__currentState:
-            self.__currentState._resume()
-        else:
-            self.changeState(self.__entryHandle)
 
     def update(self, dt):
         if self.__currentState:
@@ -317,33 +302,41 @@ class Sequencer(object):
              raise EngineError('No state with handle %s' % handle)
 
 
-class Application(gameapp.GameApp):
-    def __init__(self, *args, **kwargs):
+class GameDiv(libavg.app.MainDiv):
+    def onInit(self):
+        avg.WordsNode.addFontDir(libavg.utils.getMediaDir(__file__, 'fonts'))
+        self.mediadir = libavg.utils.getMediaDir(__file__)
+
         self.__elapsedTime = 0
         self.__pointer = None
-        super(Application, self).__init__(*args, **kwargs)
-        self.sequencer = Sequencer(self._parentNode)
+        self.sequencer = Sequencer(self)
+
+        self.createGame()
+
+        player.subscribe(player.KEY_DOWN, self.sequencer.propagateKeyDown)
+        player.subscribe(player.KEY_UP, self.sequencer.propagateKeyUp)
+        self.subscribe(self.CURSOR_DOWN, self.onCursorDown)
+        self.subscribe(self.CURSOR_MOTION, self.onCursorMotion)
 
     def setupPointer(self, instance):
-        self._parentNode.appendChild(instance)
+        self.appendChild(instance)
         instance.sensitive = False
         self.__pointer = instance
         player.showCursor(False)
 
-    @property
-    def size(self):
-        return player.getRootNode().size
+    def createGame(self):
+        raise NotImplementedError('createGame() must be overloaded')
 
     def rnorm(self, value):
         return (value * math.sqrt((self.size.x ** 2 + self.size.y ** 2) /
-                float(consts.ORIGINAL_SIZE[0] ** 2 + consts.ORIGINAL_SIZE[1] ** 2)))
-        
+                                  float(consts.ORIGINAL_SIZE[0] ** 2 + consts.ORIGINAL_SIZE[1] ** 2)))
+
     def xnorm(self, value):
         return int(value * self.size.x / float(consts.ORIGINAL_SIZE[0]))
 
     def ynorm(self, value):
         return int(value * self.size.y / float(consts.ORIGINAL_SIZE[1]))
-    
+
     def pnorm(self, p, diagNorm=False):
         if len(p) == 2:
             point = Point2D(p)
@@ -351,54 +344,33 @@ class Application(gameapp.GameApp):
             point = p
         else:
             raise ValueError('Cannot convert %s to Point2D' % str(args))
-        
+
         if diagNorm:
             return Point2D(self.rnorm(point.x), self.rnorm(point.y))
         else:
             return Point2D(self.xnorm(point.x), self.ynorm(point.y))
-    
+
     def spnorm(self, seq, diagNorm=False):
         nseq = []
-        
+
         for p in seq:
             nseq.append(self.pnorm(p, diagNorm=diagNorm))
-        
+
         return nseq
 
-    def onKeyDown(self, event):
-        self.sequencer.propagateKeyDown(event)
-
-    def onKeyUp(self, event):
-        self.sequencer.propagateKeyUp(event)
-
-    def onTouch(self, event):
+    def onCursorDown(self, event):
         self.sequencer.propagateTouch(event)
 
         if event.source == avg.TOUCH and self.__pointer:
             self.__pointer.opacity = 0
 
-    def onMouseMotion(self, event):
+    def onCursorMotion(self, event):
         if self.__pointer:
             self.__pointer.opacity = 1
             self.__pointer.pos = event.pos - self.__pointer.size / 2
             self.__pointer.refresh()
 
-    def _enter(self):
-        self._parentNode.subscribe(avg.Node.CURSOR_DOWN, self.onTouch)
-        self._parentNode.subscribe(avg.Node.CURSOR_MOTION, self.onMouseMotion)
-
-        player.subscribe(player.ON_FRAME, self.__onFrame)
-
-        self.sequencer.resume()
-
-    def _leave(self):
-        self._parentNode.unsubscribe(avg.Node.CURSOR_DOWN, self.onTouch)
-        self._parentNode.unsubscribe(avg.Node.CURSOR_MOTION, self.onMouseMotion)
-        player.unsubscribe(player.ON_FRAME, self.__onFrame)
-
-        self.sequencer.pause()
-
-    def __onFrame(self):
+    def onFrame(self):
         dt = player.getFrameTime() - self.__elapsedTime
         self.sequencer.update(dt)
 

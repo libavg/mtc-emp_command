@@ -30,9 +30,7 @@
 
 
 import random
-from libavg import avg, Point2D
-
-from gameapp import app
+from libavg import avg, Point2D, app
 
 import engine
 import consts
@@ -43,7 +41,7 @@ class GameWordsNode(avg.WordsNode):
         kwargs['font'] = 'EMPRetro'
         kwargs['sensitive'] = False
         if 'fontsize' in kwargs:
-            kwargs['fontsize'] = max(app().ynorm(kwargs['fontsize']), 7)
+            kwargs['fontsize'] = max(app.instance.mainDiv.ynorm(kwargs['fontsize']), 7)
         super(GameWordsNode, self).__init__(**kwargs)
         self.registerInstance(self, parent)
 
@@ -52,7 +50,7 @@ class VLayout(avg.DivNode):
     def __init__(self, interleave, width, parent=None, **kwargs):
         super(VLayout, self).__init__(**kwargs)
         self.registerInstance(self, parent)
-        self.interleave = app().ynorm(interleave)
+        self.interleave = app.instance.mainDiv.ynorm(interleave)
         self.size = Point2D(width, 1)
         self.yoffs = 0
         self.objs = []
@@ -107,7 +105,7 @@ class MenuItem(avg.DivNode):
         avg.LineNode(pos1=(0, 0), pos2=(0, self.height), color=consts.COLOR_RED,
                 strokewidth=3, parent=self.curContainer)
         
-        self.__scrollSpeed = app().xnorm(self.SCROLL_SPEED * 100) / float(100)
+        self.__scrollSpeed = app.instance.mainDiv.xnorm(self.SCROLL_SPEED * 100) / float(100)
         self.curState = 0
 
     def setActive(self, active):
@@ -210,7 +208,7 @@ class HiscoreTab(avg.DivNode):
                 width=self.width, pos=(self.width / 2, 0), alignment='center',
                 parent=self)
 
-        yp = hdr.getMediaSize().y + app().ynorm(5)
+        yp = hdr.getMediaSize().y + app.instance.mainDiv.ynorm(5)
         avg.LineNode(pos1=(0, yp), pos2=(self.width, yp),
                 strokewidth=1, color=consts.COLOR_BLUE, parent=self)
 
@@ -223,7 +221,7 @@ class HiscoreTab(avg.DivNode):
         self.__initialTouchPos = None
         self.__lastYSpeed = 0
         self.__scrollLock = False
-        self.__speedFactor = app().ynorm(self.SPEED_FACTOR)
+        self.__speedFactor = app.instance.mainDiv.ynorm(self.SPEED_FACTOR)
         self.subscribe(self.CURSOR_DOWN, self.__onTouchDown)
         self.subscribe(self.CURSOR_MOTION, self.__onMotion)
         self.subscribe(self.CURSOR_UP, self.__onTouchUp)
@@ -246,20 +244,20 @@ class HiscoreTab(avg.DivNode):
 
         pos = 0
         for s in self.db.data:
-            y = pos * app().ynorm(40)
+            y = pos * app.instance.mainDiv.ynorm(40)
             col1 = GameWordsNode(fontsize=20, text=self.toCardinal(pos + 1),
-                    pos=app().pnorm((5, y + 4)), parent=self.__stage)
+                    pos=app.instance.mainDiv.pnorm((5, y + 4)), parent=self.__stage)
             col2 = GameWordsNode(fontsize=35, text=s.name,
-                    pos=app().pnorm((75, y)),
+                    pos=app.instance.mainDiv.pnorm((75, y)),
                     color=consts.COLOR_BLUE, parent=self.__stage)
             col3 = GameWordsNode(fontsize=28, text=str(s.points), alignment='right',
                     color=consts.COLOR_RED,
-                    pos=app().pnorm((345, y + 2)), parent=self.__stage)
+                    pos=app.instance.mainDiv.pnorm((345, y + 2)), parent=self.__stage)
 
             self.__nodes += [col1, col2, col3]
             pos += 1
 
-        self.__stage.height = pos * app().ynorm(40)
+        self.__stage.height = pos * app.instance.mainDiv.ynorm(40)
         self.__stage.y = self.height
 
     def update(self, dt):
@@ -313,15 +311,15 @@ class Key(avg.DivNode):
 
         self.__bg = avg.RectNode(size=self.size, opacity=0, fillcolor=consts.COLOR_BLUE,
                 fillopacity=1, parent=self)
-        self.__wnode = GameWordsNode(pos=(self.width / 2 + app().xnorm(4),
-                self.height / 2 - app().ynorm(28)),
+        self.__wnode = GameWordsNode(pos=(self.width / 2 + app.instance.mainDiv.xnorm(4),
+                self.height / 2 - app.instance.mainDiv.ynorm(28)),
                 alignment='center', fontsize=50, color=consts.COLOR_RED,
                 rawtextmode=True, parent=self)
 
         if char == '#':
             self.__wnode.text = 'OK'
             self.__wnode.fontsize = 30
-            self.__wnode.y = self.height / 2 - app().ynorm(18)
+            self.__wnode.y = self.height / 2 - app.instance.mainDiv.ynorm(18)
         else:
             self.__wnode.text = char
 
@@ -455,7 +453,7 @@ class Gauge(avg.DivNode):
 
     def addLabel(self, text):
         GameWordsNode(text=text, alignment='center', fontsize=8, color='ffffff',
-                pos=(self.size.x / 2, self.size.y + app().ynorm(5)),
+                pos=(self.size.x / 2, self.size.y + app.instance.mainDiv.ynorm(5)),
                 opacity=0.8, parent=self)
 
 
@@ -505,9 +503,9 @@ class RIImage(avg.ImageNode):
         super(RIImage, self).__init__(**kwargs)
         self.registerInstance(self, parent)
         if lock == 'x':
-            nf = app().xnorm
+            nf = app.instance.mainDiv.xnorm
         else:
-            nf = app().ynorm
+            nf = app.instance.mainDiv.ynorm
         
         self.size = (nf(self.getMediaSize().x), nf(self.getMediaSize().y))
 
@@ -543,7 +541,7 @@ class QuitSwitch(avg.DivNode):
         self.__cursorId = None
         self.__anim = None
         self.__cb = cb
-        self.__xlimit = app().xnorm(self.BUTTON_RIGHT_XLIMIT)
+        self.__xlimit = app.instance.mainDiv.xnorm(self.BUTTON_RIGHT_XLIMIT)
         
         self.__button.subscribe(self.CURSOR_DOWN, self.__onDown)
         self.__button.subscribe(self.CURSOR_UP, self.__onUp)

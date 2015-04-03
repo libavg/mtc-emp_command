@@ -32,8 +32,7 @@
 import random
 import math
 
-from libavg import avg, Point2D, player
-from gameapp import app
+from libavg import avg, Point2D, player, app
 
 import engine
 import widgets
@@ -62,11 +61,11 @@ class Explosion(LayeredSprite):
     cb = None
 
     def __init__(self, pos):
-        self._node = avg.CircleNode(pos=pos, r=app().rnorm(20), fillcolor=self.COLOR,
+        self._node = avg.CircleNode(pos=pos, r=app.instance.mainDiv.rnorm(20), fillcolor=self.COLOR,
                 opacity=0, fillopacity=1, parent=self.layer)
 
-        targetRadius = app().rnorm(self.RADIUS)
-        if app().difficultyLevel == 2:
+        targetRadius = app.instance.mainDiv.rnorm(self.RADIUS)
+        if app.instance.mainDiv.difficultyLevel == 2:
             targetRadius *= 0.8
 
         diman = avg.EaseInOutAnim(self._node, 'r', self.DURATION, 1,
@@ -141,9 +140,9 @@ class EnemyExplosion(Explosion):
 class TouchFeedback(LayeredSprite):
     def __init__(self, pos, color):
         self.__node = avg.CircleNode(color=color, strokewidth=2,
-                parent=self.layer, r=app().rnorm(10), pos=pos)
+                parent=self.layer, r=app.instance.mainDiv.rnorm(10), pos=pos)
 
-        diman = avg.LinearAnim(self.__node, 'r', 200, app().rnorm(10), app().rnorm(20))
+        diman = avg.LinearAnim(self.__node, 'r', 200, app.instance.mainDiv.rnorm(10), app.instance.mainDiv.rnorm(20))
         opaan = avg.LinearAnim(self.__node, 'opacity', 200, 1, 0)
         self.__anim = avg.ParallelAnim((diman, opaan), None, self.__cleanup)
         self.__anim.start()
@@ -160,10 +159,10 @@ class TextFeedback(LayeredSprite):
                 pos=pos, fontsize=30, color=color, alignment='center')
 
         diman = avg.LinearAnim(self.__node, 'fontsize', self.TRANSITION_TIME,
-                app().ynorm(30), app().ynorm(60))
+                app.instance.mainDiv.ynorm(30), app.instance.mainDiv.ynorm(60))
         opaan = avg.LinearAnim(self.__node, 'opacity', self.TRANSITION_TIME, 1, 0)
         offsan = avg.LinearAnim(self.__node, 'pos',
-                self.TRANSITION_TIME, pos, pos - app().pnorm(Point2D(70, 70)))
+                self.TRANSITION_TIME, pos, pos - app.instance.mainDiv.pnorm(Point2D(70, 70)))
         self.__anim = avg.ParallelAnim((diman, opaan, offsan), None, self.__cleanup)
         self.__anim.start()
 
@@ -323,7 +322,7 @@ class Missile(LayeredSprite):
                 color=self.COLOR, strokewidth=self.TRAIL_THICKNESS, parent=self.layer)
 
         self.nominalSpeedVec = ((self.targetPoint - self.initPoint).getNormalized() *
-                app().rnorm(random.uniform(*self.speedRange)) / consts.DELTAT_NORM_FACTOR)
+                app.instance.mainDiv.rnorm(random.uniform(*self.speedRange)) / consts.DELTAT_NORM_FACTOR)
         self.__fade = None
         self.objects.append(self)
 
@@ -401,13 +400,13 @@ class Enemy(Missile):
                     elif exp.hits == consts.NUKE_HITS:
                         TextFeedback(exp._node.pos, '** AWESOME **', consts.COLOR_BLUE)
                     self.explode(self.traj.pos2)
-                    app().sequencer.getState('game').enemyDestroyed(self)
+                    app.instance.mainDiv.sequencer.getState('game').enemyDestroyed(self)
 
         # Check if the enemy reached its destination
         v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
             self.explode(self.targetPoint)
-            app().sequencer.getState('game').enemyDestroyed(self, self.__targetObj)
+            app.instance.mainDiv.sequencer.getState('game').enemyDestroyed(self, self.__targetObj)
 
     def getSpeedFactor(self):
         return 1 + self.__level * consts.WAVE_ENEMY_SPEED_INCREASE_FACTOR
@@ -460,7 +459,7 @@ class Target(LayeredSprite):
         self.objects.remove(self)
 
     def getHitPos(self):
-        return self._node.pos + app().pnorm(Point2D(10, 10), diagNorm=True)
+        return self._node.pos + app.instance.mainDiv.pnorm(Point2D(10, 10), diagNorm=True)
 
     def __repr__(self):
         return '%s %s' % (self.__class__.__name__, self._node.pos)
@@ -475,17 +474,17 @@ class Turret(Target):
     def __init__(self, slot, ammo):
         self._node = avg.DivNode()
         self.base = avg.PolygonNode(
-                pos=app().spnorm(((10, 0), (0, 20), (20, 20)), diagNorm=True),
+                pos=app.instance.mainDiv.spnorm(((10, 0), (0, 20), (20, 20)), diagNorm=True),
                 fillopacity=1, fillcolor=self.LIVES_COLORS[self.defaultLives],
                 opacity=0, parent=self._node)
         self.__ammoGauge = widgets.Gauge(consts.COLOR_BLUE,
                 widgets.Gauge.LAYOUT_HORIZONTAL,
-                pos=app().pnorm((0, 25), diagNorm=True),
-                size=app().pnorm((20, 5), diagNorm=True),
+                pos=app.instance.mainDiv.pnorm((0, 25), diagNorm=True),
+                size=app.instance.mainDiv.pnorm((20, 5), diagNorm=True),
                 opacity=0.5, parent=self._node)
 
         self.nukeAlert = widgets.RIImage(href='nuke_alert.png',
-                pos=app().pnorm((0, 35), diagNorm=True),
+                pos=app.instance.mainDiv.pnorm((0, 35), diagNorm=True),
                 opacity=0, parent=self._node)
 
         self.__ammo = int(ammo)
@@ -496,16 +495,16 @@ class Turret(Target):
 
     def fire(self, pos):
         if self.__hasNuke:
-            TurretMissile(self._node.pos + app().pnorm((10, 0), diagNorm=True),
+            TurretMissile(self._node.pos + app.instance.mainDiv.pnorm((10, 0), diagNorm=True),
                     pos, nuke=True)
             self.__hasNuke = False
-            app().sequencer.getState('game').nukeFired = True
+            app.instance.mainDiv.sequencer.getState('game').nukeFired = True
             engine.SoundManager.play('nuke_launch.ogg')
         else:
             if self.__ammo > 0:
                 self.__ammo -= 1
                 self.__updateGauge()
-                TurretMissile(self._node.pos + app().pnorm((10, 0), diagNorm=True), pos)
+                TurretMissile(self._node.pos + app.instance.mainDiv.pnorm((10, 0), diagNorm=True), pos)
                 engine.SoundManager.play('missile_launch.ogg', randomVolume=True)
                 return True
             else:
@@ -539,7 +538,7 @@ class Turret(Target):
     def rechargeAmmo(self):
         self.__ammo = self.__initialAmmo
         self.__updateGauge()
-        app().sequencer.getState('game').updateAmmoGauge()
+        app.instance.mainDiv.sequencer.getState('game').updateAmmoGauge()
 
     def loadNuke(self):
         if not self.__hasNuke:
@@ -566,7 +565,7 @@ class City(Target):
     def __init__(self, slot):
         self._node = avg.DivNode()
         self.base = avg.PolygonNode(
-                pos=app().spnorm(((0, 0), (10, 5), (20, 0), (20, 10), (0, 10)),
+                pos=app.instance.mainDiv.spnorm(((0, 0), (10, 5), (20, 0), (20, 10), (0, 10)),
                     diagNorm=True),
                 fillopacity=1, fillcolor='8888ff', opacity=0, parent=self._node)
         super(City, self).__init__(slot, self._node)

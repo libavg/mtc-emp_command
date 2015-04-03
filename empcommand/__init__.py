@@ -30,30 +30,21 @@
 
 VERSION = '0.3'
 
-import os
-from libavg import avg, utils
-
-def app():
-    return EmpCommand.get()
+from libavg import avg
 
 import engine
 import states
 import widgets
 import score
 
-__all__ = ['app', 'apps', 'EmpCommand', 'VERSION']
-
-
-class EmpCommand(engine.Application):
-    exitButton = True
-
-    def init(self):
+class EmpCommand(engine.GameDiv):
+    def createGame(self):
         self.difficultyLevel = 1
         
-        engine.SoundManager.init(self._parentNode)
+        engine.SoundManager.init(self)
 
         avg.RectNode(fillopacity=1, fillcolor='000000', opacity=0,
-                size=self.size, parent=self._parentNode)
+                size=self.size, parent=self)
 
         self.scoreDatabase = score.HiscoreDatabase(self)
 
@@ -83,17 +74,3 @@ class EmpCommand(engine.Application):
 
         self.setupPointer(widgets.CrossHair())
         self.sequencer.bootstrap('start')
-
-def createPreviewNode(maxSize):
-    filename = os.path.join(utils.getMediaDir(__file__), 'preview.png')
-
-    return utils.createImagePreviewNode(maxSize, absHref = filename)
-
-
-apps = (
-        {
-            'class': EmpCommand,
-            'createPreviewNode': createPreviewNode
-        },
-)
-
