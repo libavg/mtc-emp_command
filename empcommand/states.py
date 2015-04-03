@@ -32,6 +32,7 @@
 import random
 import math
 import logging
+import datetime
 
 from libavg import avg, Point2D, player, app
 
@@ -116,7 +117,9 @@ class About(engine.FadeGameState):
         about.add(widgets.GameWordsNode(
                 text='VERSION: %s' % VERSION,
                 color=consts.COLOR_BLUE, fontsize=8))
-        about.add(widgets.GameWordsNode(text='© 2010-2013 OXullo Intersecans',
+
+        year = datetime.date.today().year
+        about.add(widgets.GameWordsNode(text='© 2010-%d OXullo Intersecans' % year,
                 color='ffffff', fontsize=25))
         about.add(widgets.GameWordsNode(text='http://www.brainrapers.org/empcommand/',
                 color=consts.COLOR_RED, fontsize=18))
