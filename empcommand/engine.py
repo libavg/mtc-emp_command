@@ -108,9 +108,10 @@ class GameState(avg.DivNode):
         self.engine = None
         self.opacity = 0
         self.sensitive = False
+        self.sequencer = None
 
-    def registerEngine(self, engine):
-        self.engine = engine
+    def registerSequencer(self, sequencer):
+        self.sequencer = sequencer
         self._init()
 
     def registerBgTrack(self, fileName, maxVolume=1):
@@ -246,15 +247,82 @@ class FadeGameState(TransitionGameState):
                 self._bgTrack.stop).start()
 
 
-class Application(gameapp.GameApp):
-    def __init__(self, *args, **kwargs):
+class Sequencer(object):
+    def __init__(self, parentNode):
+        self.__parentNode = parentNode
         self.__registeredStates = {}
         self.__currentState = None
         self.__entryHandle = None
+
+    def registerState(self, handle, state):
+        logger.info('Registering state %s: %s' % (handle, state))
+        self.__parentNode.appendChild(state)
+        state.registerSequencer(self)
+        self.__registeredStates[handle] = state
+
+    def bootstrap(self, handle):
+        if self.__currentState:
+            raise EngineError('The game has been already bootstrapped')
+
+        self.__entryHandle = handle
+
+    def changeState(self, handle):
+        if self.__entryHandle is None:
+            raise EngineError('Game must be bootstrapped before changing its state')
+
+        newState = self.__getState(handle)
+
+        if self.__currentState:
+            self.__currentState.leave()
+
+        newState.enter()
+        logger.info('Changing state %s -> %s' % (self.__currentState, newState))
+
+        self.__currentState = newState
+
+    def getState(self, handle):
+        return self.__getState(handle)
+
+    def pause(self):
+        if self.__currentState:
+            self.__currentState.leave()
+            self.__currentState = None
+
+    def resume(self):
+        if self.__currentState:
+            self.__currentState._resume()
+        else:
+            self.changeState(self.__entryHandle)
+
+    def update(self, dt):
+        if self.__currentState:
+            self.__currentState.update(dt)
+
+    def propagateTouch(self, event):
+        if self.__currentState:
+            self.__currentState.onTouch(event)
+
+    def propagateKeyDown(self, event):
+        if self.__currentState:
+            return self.__currentState.onKeyDown(event)
+
+    def propagateKeyUp(self, event):
+        if self.__currentState:
+            return self.__currentState.onKeyUp(event)
+
+    def __getState(self, handle):
+        if handle in self.__registeredStates:
+            return self.__registeredStates[handle]
+        else:
+             raise EngineError('No state with handle %s' % handle)
+
+
+class Application(gameapp.GameApp):
+    def __init__(self, *args, **kwargs):
         self.__elapsedTime = 0
         self.__pointer = None
         super(Application, self).__init__(*args, **kwargs)
-
+        self.sequencer = Sequencer(self._parentNode)
 
     def setupPointer(self, instance):
         self._parentNode.appendChild(instance)
@@ -296,47 +364,15 @@ class Application(gameapp.GameApp):
             nseq.append(self.pnorm(p, diagNorm=diagNorm))
         
         return nseq
-        
-    def registerState(self, handle, state):
-        logger.info('Registering state %s: %s' % (handle, state))
-        self._parentNode.appendChild(state)
-        state.registerEngine(self)
-        self.__registeredStates[handle] = state
-
-    def bootstrap(self, handle):
-        if self.__currentState:
-            raise EngineError('The game has been already bootstrapped')
-
-        self.__entryHandle = handle
-
-    def changeState(self, handle):
-        if self.__entryHandle is None:
-            raise EngineError('Game must be bootstrapped before changing its state')
-
-        newState = self.__getState(handle)
-
-        if self.__currentState:
-            self.__currentState.leave()
-
-        newState.enter()
-        logger.info('Changing state %s -> %s' % (self.__currentState, newState))
-
-        self.__currentState = newState
-
-    def getState(self, handle):
-        return self.__getState(handle)
 
     def onKeyDown(self, event):
-        if self.__currentState:
-            return self.__currentState.onKeyDown(event)
+        self.sequencer.propagateKeyDown(event)
 
     def onKeyUp(self, event):
-        if self.__currentState:
-            return self.__currentState.onKeyUp(event)
+        self.sequencer.propagateKeyUp(event)
 
     def onTouch(self, event):
-        if self.__currentState:
-            self.__currentState.onTouch(event)
+        self.sequencer.propagateTouch(event)
 
         if event.source == avg.TOUCH and self.__pointer:
             self.__pointer.opacity = 0
@@ -353,29 +389,17 @@ class Application(gameapp.GameApp):
 
         player.subscribe(player.ON_FRAME, self.__onFrame)
 
-        if self.__currentState:
-            self.__currentState._resume()
-        else:
-            self.changeState(self.__entryHandle)
+        self.sequencer.resume()
 
     def _leave(self):
         self._parentNode.unsubscribe(avg.Node.CURSOR_DOWN, self.onTouch)
         self._parentNode.unsubscribe(avg.Node.CURSOR_MOTION, self.onMouseMotion)
         player.unsubscribe(player.ON_FRAME, self.__onFrame)
 
-        if self.__currentState:
-            self.__currentState.leave()
-            self.__currentState = None
-
-    def __getState(self, handle):
-        if handle in self.__registeredStates:
-            return self.__registeredStates[handle]
-        else:
-             raise EngineError('No state with handle %s' % handle)
+        self.sequencer.pause()
 
     def __onFrame(self):
-        if self.__currentState:
-            dt = player.getFrameTime() - self.__elapsedTime
-            self.__currentState.update(dt)
+        dt = player.getFrameTime() - self.__elapsedTime
+        self.sequencer.update(dt)
 
         self.__elapsedTime = player.getFrameTime()

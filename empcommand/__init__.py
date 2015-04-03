@@ -74,15 +74,15 @@ class EmpCommand(engine.Application):
         engine.SoundManager.allocate('target_destroy.ogg', 5)
         engine.SoundManager.allocate('target_hit.ogg')
 
-        self.registerState('start', states.Start())
-        self.registerState('about', states.About())
-        self.registerState('game', states.Game())
-        self.registerState('gameover', states.GameOver())
-        self.registerState('results', states.Results())
-        self.registerState('hiscore', states.Hiscore())
+        self.sequencer.registerState('start', states.Start())
+        self.sequencer.registerState('about', states.About())
+        self.sequencer.registerState('game', states.Game())
+        self.sequencer.registerState('gameover', states.GameOver())
+        self.sequencer.registerState('results', states.Results())
+        self.sequencer.registerState('hiscore', states.Hiscore())
 
         self.setupPointer(widgets.CrossHair())
-        self.bootstrap('start')
+        self.sequencer.bootstrap('start')
 
 def createPreviewNode(maxSize):
     filename = os.path.join(utils.getMediaDir(__file__), 'preview.png')

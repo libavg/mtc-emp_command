@@ -78,7 +78,7 @@ class Start(engine.FadeGameState):
         
         if consts.DEBUG:
             if event.keystring == 's':
-                self.engine.changeState('game')
+                self.sequencer.changeState('game')
                 return True
             if event.keystring == 'd':
                 import time
@@ -90,11 +90,11 @@ class Start(engine.FadeGameState):
         self.__menu.update(dt)
 
     def __onPlay(self):
-        self.engine.getState('game').setNewGame()
-        self.engine.changeState('game')
+        self.sequencer.getState('game').setNewGame()
+        self.sequencer.changeState('game')
 
     def __onAbout(self):
-        self.engine.changeState('about')
+        self.sequencer.changeState('about')
     
     def __onDiffChanged(self, ndiff):
         app().difficultyLevel = ndiff
@@ -147,11 +147,11 @@ class About(engine.FadeGameState):
 
     def _onTouch(self, event):
         engine.SoundManager.play('click.ogg')
-        self.engine.changeState('start')
+        self.sequencer.changeState('start')
     
     def _onKeyDown(self, event):
         engine.SoundManager.play('click.ogg')
-        self.engine.changeState('start')
+        self.sequencer.changeState('start')
         return True
 
 
@@ -401,10 +401,10 @@ class Game(engine.FadeGameState):
     def _onKeyDown(self, event):
         if consts.DEBUG:
             if event.keystring == 'x':
-                self.engine.changeState('gameover')
+                self.sequencer.changeState('gameover')
                 return True
             elif event.keystring == 'r':
-                self.engine.changeState('results')
+                self.sequencer.changeState('results')
                 return True
             elif event.keystring == 'd':
                 Target.filter(Turret)[0].hit()
@@ -416,7 +416,7 @@ class Game(engine.FadeGameState):
                 return True
             elif event.keystring == 'n':
                 self.__wave = 15
-                self.engine.changeState('game')
+                self.sequencer.changeState('game')
                 return True
             elif event.keystring == 'b':
                 NukeBonus((200, 200))
@@ -434,7 +434,7 @@ class Game(engine.FadeGameState):
                 self.clouds.blink()
                 return True
             elif event.keystring == '1':
-                self.engine.changeState('hiscore')
+                self.sequencer.changeState('hiscore')
                 return True
             elif event.keystring == 'h':
                 self.reset()
@@ -497,12 +497,12 @@ class Game(engine.FadeGameState):
             
         # Game end
         if not Target.filter(City):
-            self.engine.changeState('gameover')
+            self.sequencer.changeState('gameover')
 
         # Wave end
         if not self.__enemiesSpawnTimeline and not Missile.filter(Enemy):
             logger.info('Wave ended')
-            self.engine.changeState('results')
+            self.sequencer.changeState('results')
 
         # Switch to ultraspeed if there's nothing the player can do
         if (self.__ammoGauge.getFVal() == 0 and
@@ -529,7 +529,7 @@ class Game(engine.FadeGameState):
         self.__gameState = newState
 
     def __onExit(self):
-        self.engine.changeState('start')
+        self.sequencer.changeState('start')
 
 
 class Results(engine.FadeGameState):
@@ -545,12 +545,12 @@ class Results(engine.FadeGameState):
 
     def _preTransIn(self):
         self.__resultHeader.text = 'Wave %d results' % (
-                self.engine.getState('game').getLevel())
+                self.sequencer.getState('game').getLevel())
         self.__resultHeader.pos = (app().size.x / 2, app().size.y / 2)
         self.__resultsParagraph.text = ''
 
     def _postTransIn(self):
-        gameState = self.engine.getState('game')
+        gameState = self.sequencer.getState('game')
         self.rows = [
             'Enemies destroyed: %d / %d' % (
                     gameState.gameData['enemiesDestroyed'],
@@ -563,7 +563,7 @@ class Results(engine.FadeGameState):
             'Cities bonus: %d' % (len(Target.filter(City)) * consts.CITY_RESCUE_SCORE),
         ]
 
-        if self.engine.getState('game').nukeFired:
+        if self.sequencer.getState('game').nukeFired:
             self.rows.append('EMP Missiles launched: %d' %
                     gameState.gameData['ammoFired'])
         else:
@@ -582,7 +582,7 @@ class Results(engine.FadeGameState):
                 None, self.__addResultRow).start()
 
     def returnToGame(self):
-        self.engine.changeState('game')
+        self.sequencer.changeState('game')
 
     def __addResultRow(self):
         row = self.rows[0]
@@ -595,12 +595,12 @@ class Results(engine.FadeGameState):
             player.setTimeout(consts.RESULTS_DELAY, self.returnToGame)
 
     def __getAccuracy(self):
-        mfired = self.engine.getState('game').gameData['ammoFired']
+        mfired = self.sequencer.getState('game').gameData['ammoFired']
         if mfired == 0:
             return 0
         else:
-            return (float(self.engine.getState('game').gameData['enemiesDestroyed']) /
-                    self.engine.getState('game').gameData['ammoFired'] * 100)
+            return (float(self.sequencer.getState('game').gameData['enemiesDestroyed']) /
+                    self.sequencer.getState('game').gameData['ammoFired'] * 100)
 
 
 class GameOver(engine.FadeGameState):
@@ -613,18 +613,18 @@ class GameOver(engine.FadeGameState):
                 color='aaaaaa', parent=self)
 
     def _preTransIn(self):
-        score = self.engine.getState('game').getScore()
+        score = self.sequencer.getState('game').getScore()
         self.__score.text = 'Score: %d' % score
 
     def _postTransIn(self):
         db = app().scoreDatabase
         if not db.isFull() or db.data[-1].points < \
-                self.engine.getState('game').getScore():
+                self.sequencer.getState('game').getScore():
             player.setTimeout(consts.GAMEOVER_DELAY / 2,
-                lambda: self.engine.changeState('hiscore'))
+                lambda: self.sequencer.changeState('hiscore'))
         else:
             player.setTimeout(consts.GAMEOVER_DELAY,
-                    lambda: self.engine.changeState('start'))
+                    lambda: self.sequencer.changeState('start'))
 
 
 class Hiscore(engine.FadeGameState):
@@ -652,7 +652,7 @@ class Hiscore(engine.FadeGameState):
         self.__timeout = None
 
     def _preTransIn(self):
-        self.__score.text = 'Score: %d' % self.engine.getState('game').getScore()
+        self.__score.text = 'Score: %d' % self.sequencer.getState('game').getScore()
         self.__playerName.reset()
         self.__resetTimeout()
 
@@ -676,7 +676,7 @@ class Hiscore(engine.FadeGameState):
             name = '???'
 
         app().scoreDatabase.addScore(
-                score.ScoreEntry(name, self.engine.getState('game').getScore()))
+                score.ScoreEntry(name, self.sequencer.getState('game').getScore()))
 
     def __clearTimeout(self):
         if self.__timeout is not None:
@@ -686,7 +686,7 @@ class Hiscore(engine.FadeGameState):
         def fire():
             self.__timeout = None
             self.__saveScore()
-            self.engine.changeState('start')
+            self.sequencer.changeState('start')
 
         self.__clearTimeout()
         self.__timeout = player.setTimeout(self.TIMEOUT, fire)
@@ -700,7 +700,7 @@ class Hiscore(engine.FadeGameState):
             engine.SoundManager.play('click.ogg')
             self.__saveScore()
             self.__clearTimeout()
-            self.engine.changeState('start')
+            self.sequencer.changeState('start')
         else:
             engine.SoundManager.play('selection.ogg', volume=0.5)
             self.__playerName.addChar(key)

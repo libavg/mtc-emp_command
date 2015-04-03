@@ -401,13 +401,13 @@ class Enemy(Missile):
                     elif exp.hits == consts.NUKE_HITS:
                         TextFeedback(exp._node.pos, '** AWESOME **', consts.COLOR_BLUE)
                     self.explode(self.traj.pos2)
-                    app().getState('game').enemyDestroyed(self)
+                    app().sequencer.getState('game').enemyDestroyed(self)
 
         # Check if the enemy reached its destination
         v = self.speedVector(dt)
         if sqdist(self.traj.pos2, self.targetPoint) <= (v.x ** 2 + v.y ** 2):
             self.explode(self.targetPoint)
-            app().getState('game').enemyDestroyed(self, self.__targetObj)
+            app().sequencer.getState('game').enemyDestroyed(self, self.__targetObj)
 
     def getSpeedFactor(self):
         return 1 + self.__level * consts.WAVE_ENEMY_SPEED_INCREASE_FACTOR
@@ -499,7 +499,7 @@ class Turret(Target):
             TurretMissile(self._node.pos + app().pnorm((10, 0), diagNorm=True),
                     pos, nuke=True)
             self.__hasNuke = False
-            app().getState('game').nukeFired = True
+            app().sequencer.getState('game').nukeFired = True
             engine.SoundManager.play('nuke_launch.ogg')
         else:
             if self.__ammo > 0:
@@ -539,7 +539,7 @@ class Turret(Target):
     def rechargeAmmo(self):
         self.__ammo = self.__initialAmmo
         self.__updateGauge()
-        app().getState('game').updateAmmoGauge()
+        app().sequencer.getState('game').updateAmmoGauge()
 
     def loadNuke(self):
         if not self.__hasNuke:
