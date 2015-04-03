@@ -312,7 +312,6 @@ class Application(gameapp.GameApp):
     def __init__(self, *args, **kwargs):
         self.__registeredStates = {}
         self.__currentState = None
-        self.__tickTimer = None
         self.__entryHandle = None
         self.__elapsedTime = 0
         self.__pointer = None
@@ -415,7 +414,7 @@ class Application(gameapp.GameApp):
         self._parentNode.subscribe(avg.Node.CURSOR_DOWN, self.onTouch)
         self._parentNode.subscribe(avg.Node.CURSOR_MOTION, self.onMouseMotion)
 
-        self.__tickTimer = player.setOnFrameHandler(self.__onFrame)
+        player.subscribe(player.ON_FRAME, self.__onFrame)
 
         if self.__currentState:
             self.__currentState._resume()
@@ -425,8 +424,7 @@ class Application(gameapp.GameApp):
     def _leave(self):
         self._parentNode.unsubscribe(avg.Node.CURSOR_DOWN, self.onTouch)
         self._parentNode.unsubscribe(avg.Node.CURSOR_MOTION, self.onMouseMotion)
-        player.clearInterval(self.__tickTimer)
-        self.__tickTimer = None
+        player.unsubscribe(player.ON_FRAME, self.__onFrame)
 
         if self.__currentState:
             self.__currentState.leave()
