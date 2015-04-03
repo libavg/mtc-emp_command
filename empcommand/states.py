@@ -31,6 +31,7 @@
 
 import random
 import math
+import logging
 
 from libavg import avg, Point2D, player
 
@@ -42,6 +43,9 @@ import consts
 import widgets
 import score
 from gameobjs import *
+
+
+logger = logging.getLogger(__name__)
 
 
 class Start(engine.FadeGameState):
@@ -319,8 +323,7 @@ class Game(engine.FadeGameState):
         self.playTeaser('Wave %d' % self.__wave)
         self.__waveTimer = player.getFrameTime()
         self.__changeGameState(self.GAMESTATE_PLAYING)
-#        avg.logger.trace(avg.logger.APP, 'Entering wave %d: %s' % (
-#                self.__wave, str(self.gameData)))
+        logger.info('Entering wave %d: %s' % (self.__wave, str(self.gameData)))
 
     def playTeaser(self, text):
         self.__teaser.text = text
@@ -485,10 +488,9 @@ class Game(engine.FadeGameState):
         for i in xrange(nenemies):
             self.__enemiesSpawnTimeline.append(tm)
             tm += avgSpawnTime + random.randrange(-absJitter, absJitter)
-        
-#        avg.logger.trace(avg.logger.APP, 'Avg spawn time: %d Abs jitter: %d' % (avgSpawnTime,
-#                absJitter))
-        
+
+        logger.info('Avg spawn time: %d Abs jitter: %d' % (avgSpawnTime, absJitter))
+
     def __checkGameStatus(self):
         if self.__gameState not in (self.GAMESTATE_PLAYING, self.GAMESTATE_ULTRASPEED):
             return
@@ -499,7 +501,7 @@ class Game(engine.FadeGameState):
 
         # Wave end
         if not self.__enemiesSpawnTimeline and not Missile.filter(Enemy):
-#            avg.logger.trace(avg.logger.APP, 'Wave ended')
+            logger.info('Wave ended')
             self.engine.changeState('results')
 
         # Switch to ultraspeed if there's nothing the player can do
@@ -523,8 +525,7 @@ class Game(engine.FadeGameState):
         player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
 
     def __changeGameState(self, newState):
-#        avg.logger.trace(avg.logger.APP, 'Gamestate %s -> %s' % (self.__gameState,
-#                newState))
+        logger.info('Gamestate %s -> %s' % (self.__gameState, newState))
         self.__gameState = newState
 
     def __onExit(self):

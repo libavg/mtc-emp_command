@@ -32,11 +32,15 @@
 import os
 import math
 import random
+import logging
 from libavg import avg, Point2D, player
 
 import gameapp
 
 import consts
+
+
+logger = logging.getLogger(__name__)
 
 
 class NotImplementedError(Exception):
@@ -294,7 +298,7 @@ class Application(gameapp.GameApp):
         return nseq
         
     def registerState(self, handle, state):
-#        avg.logger.trace(avg.logger.APP, 'Registering state %s: %s' % (handle, state))
+        logger.info('Registering state %s: %s' % (handle, state))
         self._parentNode.appendChild(state)
         state.registerEngine(self)
         self.__registeredStates[handle] = state
@@ -315,8 +319,7 @@ class Application(gameapp.GameApp):
             self.__currentState.leave()
 
         newState.enter()
-#        avg.logger.trace(avg.logger.APP, 'Changing state %s -> %s' % (self.__currentState,
-#                newState))
+        logger.info('Changing state %s -> %s' % (self.__currentState, newState))
 
         self.__currentState = newState
 
