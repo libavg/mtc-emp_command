@@ -29,7 +29,6 @@
 # expressed or implied, of OXullo Intersecans.
 
 import sys
-import libavg.app
 
 try:
     import empcommand
@@ -43,6 +42,9 @@ if __name__ == '__main__':
         cProfile.run('empcommand.EmpCommand.start()')
     else:
         import logging
-        logging.basicConfig(level=logging.DEBUG)
-        empcommand.run()
+        if empcommand.consts.DEBUG:
+            logging.basicConfig(level=logging.DEBUG)
+        else:
+            logging.basicConfig(level=logging.WARNING)
 
+        empcommand.run()
