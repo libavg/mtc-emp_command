@@ -51,18 +51,18 @@ class Start(engine.FadeGameState):
     def _init(self):
         im = avg.ImageNode(href='logo.png', parent=self)
 
-        xfactor = app.instance.mainDiv.size.x / im.getMediaSize().x / 2
+        xfactor = engine.norm.size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
-        im.pos = (0, app.instance.mainDiv.size.y - im.size.y)
+        im.pos = (0, engine.norm.size.y - im.size.y)
 
-        rightPane = avg.DivNode(pos=app.instance.mainDiv.pnorm((765, 90)), parent=self)
+        rightPane = avg.DivNode(pos=engine.norm.p((765, 90)), parent=self)
         
         self.__menu = widgets.Menu(onPlay=self.__onPlay, onAbout=self.__onAbout,
                 onDiffChanged=self.__onDiffChanged, onQuit=self.__onQuit,
-                size=app.instance.mainDiv.pnorm((350, 300)), parent=rightPane)
+                size=engine.norm.p((350, 300)), parent=rightPane)
 
         self.__hiscoreTab = widgets.HiscoreTab(db=app.instance.mainDiv.scoreDatabase,
-                pos=app.instance.mainDiv.pnorm((0, 350)), size=app.instance.mainDiv.pnorm((350, 270)),
+                pos=engine.norm.p((0, 350)), size=engine.norm.p((350, 270)),
                 parent=rightPane)
         
         self.registerBgTrack('theme_start.ogg')
@@ -106,10 +106,10 @@ class Start(engine.FadeGameState):
 class About(engine.FadeGameState):
     def _init(self):
         im = avg.ImageNode(href='logo.png', parent=self)
-        xfactor = app.instance.mainDiv.size.x / im.getMediaSize().x / 2
+        xfactor = engine.norm.size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
         
-        about = widgets.VLayout(interleave=10, width=600, pos=app.instance.mainDiv.pnorm((580, 300)),
+        about = widgets.VLayout(interleave=10, width=600, pos=engine.norm.p((580, 300)),
                 parent=self)
         about.add(widgets.GameWordsNode(text='EMPCommand', color=consts.COLOR_BLUE,
                 fontsize=60))
@@ -133,14 +133,14 @@ class About(engine.FadeGameState):
                 the living turrets.<br/>Keep cities from being destroyed if you want to
                 raise up your score and consider that once a turret has been hit for three
                 times, it's gone, along with its ammo.''',
-                width=app.instance.mainDiv.xnorm(600), color='ffffff', fontsize=12))
+                width=engine.norm.x(600), color='ffffff', fontsize=12))
                 
         about.add(widgets.GameWordsNode(
                 text='This game is based on libavg (http://www.libavg.de)',
                 color=consts.COLOR_RED, fontsize=16), offset=10)
         
-        avg.ImageNode(href='enmy_sky.png', size=(app.instance.mainDiv.size.x, app.instance.mainDiv.ynorm(300)),
-                pos=(0, app.instance.mainDiv.size.y - app.instance.mainDiv.ynorm(300)), angle=math.pi,
+        avg.ImageNode(href='enmy_sky.png', size=(engine.norm.size.x, engine.norm.y(300)),
+                pos=(0, engine.norm.size.y - engine.norm.y(300)), angle=math.pi,
                 opacity=0.2, parent=self)
         
         self.registerBgTrack('theme_about.ogg', maxVolume=0.5)
@@ -162,25 +162,25 @@ class Game(engine.FadeGameState):
 
     def _init(self):
         # Sky
-        avg.ImageNode(href='enmy_sky.png', size=(app.instance.mainDiv.size.x, app.instance.mainDiv.ynorm(300)),
+        avg.ImageNode(href='enmy_sky.png', size=(engine.norm.size.x, engine.norm.y(300)),
                 opacity=0.3, parent=self)
-        self.clouds = widgets.Clouds(maxOpacity=0.4, size=(app.instance.mainDiv.size.x,
-                app.instance.mainDiv.ynorm(600)), parent=self)
+        self.clouds = widgets.Clouds(maxOpacity=0.4, size=(engine.norm.size.x,
+                engine.norm.y(600)), parent=self)
         EnemyExplosion.registerCallback(self.clouds.blink)
         
         # Allied ground
-        a = app.instance.mainDiv.xnorm(5)
-        b = app.instance.mainDiv.ynorm(10)
-        c = app.instance.mainDiv.xnorm(30)
-        d = app.instance.mainDiv.ynorm(5)
-        ito = app.instance.mainDiv.ynorm(consts.INVALID_TARGET_Y_OFFSET)
+        a = engine.norm.x(5)
+        b = engine.norm.y(10)
+        c = engine.norm.x(30)
+        d = engine.norm.y(5)
+        ito = engine.norm.y(consts.INVALID_TARGET_Y_OFFSET)
         polpos = (
-            (-a, app.instance.mainDiv.size.y - ito + b),
-            (c, app.instance.mainDiv.size.y - ito),
-            (app.instance.mainDiv.size.x - c, app.instance.mainDiv.size.y - ito),
-            (app.instance.mainDiv.size.x + a, app.instance.mainDiv.size.y - ito + b),
-            (app.instance.mainDiv.size.x + a, app.instance.mainDiv.size.y + d),
-            (-a, app.instance.mainDiv.size.y + d),
+            (-a, engine.norm.size.y - ito + b),
+            (c, engine.norm.size.y - ito),
+            (engine.norm.size.x - c, engine.norm.size.y - ito),
+            (engine.norm.size.x + a, engine.norm.size.y - ito + b),
+            (engine.norm.size.x + a, engine.norm.size.y + d),
+            (-a, engine.norm.size.y + d),
         )
         
         avg.PolygonNode(
@@ -221,26 +221,26 @@ class Game(engine.FadeGameState):
         engine.SoundManager.allocate('buzz.ogg')
 
         self.__scoreText = widgets.GameWordsNode(text='0',
-                pos=(app.instance.mainDiv.size.x / 2, app.instance.mainDiv.ynorm(100)),
+                pos=(engine.norm.size.x / 2, engine.norm.y(100)),
                 alignment='center', fontsize=50, opacity=0.5, parent=self)
         self.__teaser = widgets.GameWordsNode(text='',
-                pos=(app.instance.mainDiv.size.x / 2, app.instance.mainDiv.ynorm(300)),
+                pos=(engine.norm.size.x / 2, engine.norm.y(300)),
                 alignment='center', fontsize=70, opacity=0.5, parent=self)
 
         self.__ammoGauge = widgets.Gauge(consts.COLOR_BLUE,
                 widgets.Gauge.LAYOUT_VERTICAL,
-                pos=(app.instance.mainDiv.xnorm(20),
-                    app.instance.mainDiv.size.y - app.instance.mainDiv.ynorm(consts.INVALID_TARGET_Y_OFFSET) - \
-                        app.instance.mainDiv.ynorm(350)),
-                size=(app.instance.mainDiv.xnorm(15), app.instance.mainDiv.ynorm(300)), parent=self)
+                pos=(engine.norm.x(20),
+                    engine.norm.size.y - engine.norm.y(consts.INVALID_TARGET_Y_OFFSET) - \
+                        engine.norm.y(350)),
+                size=(engine.norm.x(15), engine.norm.y(300)), parent=self)
         self.__ammoGauge.addLabel('AMMO')
         self.__ammoGauge.setOpacity(0.3)
 
         self.__enemiesGauge = widgets.Gauge(consts.COLOR_RED,
                 widgets.Gauge.LAYOUT_VERTICAL,
-                pos=(app.instance.mainDiv.size.x - app.instance.mainDiv.xnorm(35), app.instance.mainDiv.size.y - \
-                    consts.INVALID_TARGET_Y_OFFSET - app.instance.mainDiv.ynorm(350)),
-                size=(app.instance.mainDiv.xnorm(15), app.instance.mainDiv.ynorm(300)), parent=self)
+                pos=(engine.norm.size.x - engine.norm.x(35), engine.norm.size.y - \
+                    consts.INVALID_TARGET_Y_OFFSET - engine.norm.y(350)),
+                size=(engine.norm.x(15), engine.norm.y(300)), parent=self)
         self.__enemiesGauge.addLabel('ENMY')
         self.__enemiesGauge.setOpacity(0.3)
         
@@ -253,15 +253,15 @@ class Game(engine.FadeGameState):
                 fontsize=8, color='ffffff', opacity=0.7, parent=self)
         
         self.__quitSwitch = widgets.QuitSwitch(cb=self.__onExit,
-                pos=app.instance.mainDiv.pnorm((1076, 10)), parent=self)
+                pos=engine.norm.p((1076, 10)), parent=self)
 
     def _preTransIn(self):
         self.reset()
 
     def _postTransIn(self):
         self.nextWave()
-        widgets.CrossHair.warningy = app.instance.mainDiv.size.y - \
-                app.instance.mainDiv.ynorm(consts.INVALID_TARGET_Y_OFFSET)
+        widgets.CrossHair.warningy = engine.norm.size.y - \
+                engine.norm.y(consts.INVALID_TARGET_Y_OFFSET)
 
     def _preTransOut(self):
         self.__changeGameState(self.GAMESTATE_INITIALIZING)
@@ -299,10 +299,10 @@ class Game(engine.FadeGameState):
         self.__enemiesGone = 0
         self.gameData['initialEnemies'] = nenemies
 
-        slots = [Point2D(x * app.instance.mainDiv.xnorm(consts.SLOT_WIDTH), app.instance.mainDiv.size.y - \
-                app.instance.mainDiv.ynorm(60))
+        slots = [Point2D(x * engine.norm.x(consts.SLOT_WIDTH), engine.norm.size.y - \
+                engine.norm.y(60))
                     for x in xrange(1,
-                        int(app.instance.mainDiv.size.x/app.instance.mainDiv.xnorm(consts.SLOT_WIDTH) + 1))]
+                        int(engine.norm.size.x/engine.norm.x(consts.SLOT_WIDTH) + 1))]
 
         random.shuffle(slots)
 
@@ -372,8 +372,8 @@ class Game(engine.FadeGameState):
     def _onTouch(self, event):
         turrets = filter(lambda o: o.hasAmmo(), Target.filter(Turret))
         if turrets:
-            ito = app.instance.mainDiv.ynorm(consts.INVALID_TARGET_Y_OFFSET)
-            if event.pos.y < app.instance.mainDiv.size.y - ito:
+            ito = engine.norm.y(consts.INVALID_TARGET_Y_OFFSET)
+            if event.pos.y < engine.norm.size.y - ito:
                 if len(turrets) > 1:
                     d = abs(turrets[0].getHitPos().x - event.pos.x)
                     selectedTurret = turrets[0]
@@ -452,7 +452,7 @@ class Game(engine.FadeGameState):
             self.__ammoGauge.setColor(consts.COLOR_RED)
             engine.SoundManager.play('low_ammo.ogg', volume=0.5)
             TextFeedback(self.__ammoGauge.pos + self.__ammoGauge.size / 2 + \
-                    Point2D(app.instance.mainDiv.xnorm(250), 0),
+                    Point2D(engine.norm.x(250), 0),
                     'Low ammo!', consts.COLOR_RED)
             self.__lowAmmoNotified = True
         self.__ammoGauge.setFVal(afv)
@@ -517,7 +517,7 @@ class Game(engine.FadeGameState):
                 (self.__gameState == self.GAMESTATE_ULTRASPEED or
                 self.__enemiesSpawnTimeline[0] < self.__getWaveTime())):
             self.__enemiesSpawnTimeline.pop(0)
-            origin = Point2D(random.randrange(0, app.instance.mainDiv.size.x), 0)
+            origin = Point2D(random.randrange(0, engine.norm.size.x), 0)
             target = random.choice(Target.objects)
             Enemy(origin, target, self.__wave)
 
@@ -538,7 +538,7 @@ class Results(engine.FadeGameState):
             fontsize=70, color='ff2222', parent=self)
 
         self.__resultsParagraph = widgets.GameWordsNode(
-            pos=(app.instance.mainDiv.size.x / 2, app.instance.mainDiv.size.y / 2 - 40),
+            pos=(engine.norm.size.x / 2, engine.norm.size.y / 2 - 40),
             alignment='center', fontsize=40, color='aaaaaa', parent=self)
 
         self.registerBgTrack('theme_results.ogg')
@@ -546,7 +546,7 @@ class Results(engine.FadeGameState):
     def _preTransIn(self):
         self.__resultHeader.text = 'Wave %d results' % (
                 self.sequencer.getState('game').getLevel())
-        self.__resultHeader.pos = (app.instance.mainDiv.size.x / 2, app.instance.mainDiv.size.y / 2)
+        self.__resultHeader.pos = (engine.norm.size.x / 2, engine.norm.size.y / 2)
         self.__resultsParagraph.text = ''
 
     def _postTransIn(self):
@@ -576,8 +576,8 @@ class Results(engine.FadeGameState):
                 (1 + app.instance.mainDiv.difficultyLevel * 0.3))
                 
         avg.EaseInOutAnim(self.__resultHeader, 'y', consts.RESULTS_ADDROW_DELAY / 2,
-                app.instance.mainDiv.size.y / 2,
-                app.instance.mainDiv.size.y / 2 - 140, False,
+                engine.norm.size.y / 2,
+                engine.norm.size.y / 2 - 140, False,
                 consts.RESULTS_ADDROW_DELAY / 6, consts.RESULTS_ADDROW_DELAY / 4,
                 None, self.__addResultRow).start()
 
@@ -605,11 +605,11 @@ class Results(engine.FadeGameState):
 
 class GameOver(engine.FadeGameState):
     def _init(self):
-        widgets.GameWordsNode(text='Game Over', pos=(app.instance.mainDiv.size.x / 2,
-                app.instance.mainDiv.size.y / 2 - 80), alignment='center', fontsize=70,
+        widgets.GameWordsNode(text='Game Over', pos=(engine.norm.size.x / 2,
+                engine.norm.size.y / 2 - 80), alignment='center', fontsize=70,
                 color='ff2222', parent=self)
-        self.__score = widgets.GameWordsNode(pos=(app.instance.mainDiv.size.x / 2,
-                app.instance.mainDiv.size.y / 2 + 20), alignment='center', fontsize=40,
+        self.__score = widgets.GameWordsNode(pos=(engine.norm.size.x / 2,
+                engine.norm.size.y / 2 + 20), alignment='center', fontsize=40,
                 color='aaaaaa', parent=self)
 
     def _preTransIn(self):
@@ -631,23 +631,23 @@ class Hiscore(engine.FadeGameState):
     TIMEOUT = 8000
     def _init(self):
         widgets.GameWordsNode(text='New hiscore!',
-                pos=(app.instance.mainDiv.size.x / 2, app.instance.mainDiv.ynorm(70)), alignment='center', fontsize=70,
+                pos=(engine.norm.size.x / 2, engine.norm.y(70)), alignment='center', fontsize=70,
                 color='ff2222', parent=self)
 
-        self.__score = widgets.GameWordsNode(pos=(app.instance.mainDiv.size.x / 2, app.instance.mainDiv.ynorm(170)),
+        self.__score = widgets.GameWordsNode(pos=(engine.norm.size.x / 2, engine.norm.y(170)),
                 alignment='center', fontsize=40, color='aaaaaa', parent=self)
 
         self.__keyboard = widgets.Keyboard(
-                keySize=app.instance.mainDiv.ynorm(60),
-                padding=app.instance.mainDiv.xnorm(15),
+                keySize=engine.norm.y(60),
+                padding=engine.norm.x(15),
                 cb=self.__onKeyTouch, parent=self)
-        self.__keyboard.pos = ((app.instance.mainDiv.size.x - self.__keyboard.size.x) / 2,
-                app.instance.mainDiv.size.y - self.__keyboard.size.y - app.instance.mainDiv.ynorm(100))
+        self.__keyboard.pos = ((engine.norm.size.x - self.__keyboard.size.x) / 2,
+                engine.norm.size.y - self.__keyboard.size.y - engine.norm.y(100))
 
-        self.__playerName = widgets.PlayerName(size=app.instance.mainDiv.pnorm((450, 150)),
+        self.__playerName = widgets.PlayerName(size=engine.norm.p((450, 150)),
                 parent=self)
-        self.__playerName.pos = ((app.instance.mainDiv.size.x - self.__playerName.size.x) / 2,
-                app.instance.mainDiv.ynorm(240))
+        self.__playerName.pos = ((engine.norm.size.x - self.__playerName.size.x) / 2,
+                engine.norm.y(240))
 
         self.__timeout = None
 

@@ -296,6 +296,45 @@ class Sequencer(object):
              raise EngineError('No state with handle %s' % handle)
 
 
+class Normaliser(object):
+    def __init__(self):
+        self.size = None
+
+    def setSize(self, size):
+        self.size = size
+
+    def r(self, value):
+        return (value * math.sqrt((self.size.x ** 2 + self.size.y ** 2) /
+                                  float(consts.ORIGINAL_SIZE[0] ** 2 + consts.ORIGINAL_SIZE[1] ** 2)))
+
+    def x(self, value):
+        return int(value * self.size.x / float(consts.ORIGINAL_SIZE[0]))
+
+    def y(self, value):
+        return int(value * self.size.y / float(consts.ORIGINAL_SIZE[1]))
+
+    def p(self, p, diagNorm=False):
+        if len(p) == 2:
+            point = Point2D(p)
+        elif type(p) == Point2D:
+            point = p
+        else:
+            raise ValueError('Cannot convert %s to Point2D' % str(args))
+
+        if diagNorm:
+            return Point2D(self.r(point.x), self.r(point.y))
+        else:
+            return Point2D(self.x(point.x), self.y(point.y))
+
+    def sp(self, seq, diagNorm=False):
+        nseq = []
+
+        for p in seq:
+            nseq.append(self.p(p, diagNorm=diagNorm))
+
+        return nseq
+
+
 class GameDiv(libavg.app.MainDiv):
     def onInit(self):
         avg.WordsNode.addFontDir(libavg.utils.getMediaDir(__file__, 'fonts'))
@@ -304,6 +343,8 @@ class GameDiv(libavg.app.MainDiv):
         self.__elapsedTime = 0
         self.__pointer = None
         self.sequencer = Sequencer(self)
+
+        norm.setSize(self.size)
 
         self.createGame()
 
@@ -320,37 +361,6 @@ class GameDiv(libavg.app.MainDiv):
 
     def createGame(self):
         raise NotImplementedError('createGame() must be overloaded')
-
-    def rnorm(self, value):
-        return (value * math.sqrt((self.size.x ** 2 + self.size.y ** 2) /
-                                  float(consts.ORIGINAL_SIZE[0] ** 2 + consts.ORIGINAL_SIZE[1] ** 2)))
-
-    def xnorm(self, value):
-        return int(value * self.size.x / float(consts.ORIGINAL_SIZE[0]))
-
-    def ynorm(self, value):
-        return int(value * self.size.y / float(consts.ORIGINAL_SIZE[1]))
-
-    def pnorm(self, p, diagNorm=False):
-        if len(p) == 2:
-            point = Point2D(p)
-        elif type(p) == Point2D:
-            point = p
-        else:
-            raise ValueError('Cannot convert %s to Point2D' % str(args))
-
-        if diagNorm:
-            return Point2D(self.rnorm(point.x), self.rnorm(point.y))
-        else:
-            return Point2D(self.xnorm(point.x), self.ynorm(point.y))
-
-    def spnorm(self, seq, diagNorm=False):
-        nseq = []
-
-        for p in seq:
-            nseq.append(self.pnorm(p, diagNorm=diagNorm))
-
-        return nseq
 
     def onCursorDown(self, event):
         self.sequencer.propagateTouch(event)
@@ -369,3 +379,6 @@ class GameDiv(libavg.app.MainDiv):
         self.sequencer.update(dt)
 
         self.__elapsedTime = player.getFrameTime()
+
+
+norm = Normaliser()
