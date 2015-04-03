@@ -259,12 +259,6 @@ class Sequencer(object):
         state.registerSequencer(self)
         self.__registeredStates[handle] = state
 
-    def bootstrap(self, handle):
-        if self.__currentState:
-            raise EngineError('The game has been already bootstrapped')
-
-        self.changeState(handle)
-
     def changeState(self, handle):
         newState = self.__getState(handle)
 

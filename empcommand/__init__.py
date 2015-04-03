@@ -73,4 +73,4 @@ class EmpCommand(engine.GameDiv):
         self.sequencer.registerState('hiscore', states.Hiscore())
 
         self.setupPointer(widgets.CrossHair())
-        self.sequencer.bootstrap('start')
+        self.sequencer.changeState('start')
