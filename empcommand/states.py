@@ -329,7 +329,7 @@ class Game(engine.FadeGameState):
 
     def playTeaser(self, text):
         self.__teaser.text = text
-        avg.fadeIn(self.__teaser, 200, 1, self.__teaserTimer)
+        avg.Anim.fadeIn(self.__teaser, 200, 1, self.__teaserTimer)
 
     def getScore(self):
         return self.__score
@@ -524,7 +524,7 @@ class Game(engine.FadeGameState):
             Enemy(origin, target, self.__wave)
 
     def __teaserTimer(self):
-        player.setTimeout(1000, lambda: avg.fadeOut(self.__teaser, 3000))
+        player.setTimeout(1000, lambda: avg.Anim.fadeOut(self.__teaser, 3000))
 
     def __changeGameState(self, newState):
         logger.info('Gamestate %s -> %s' % (self.__gameState, newState))

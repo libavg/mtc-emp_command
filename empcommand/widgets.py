@@ -373,7 +373,7 @@ class Keyboard(avg.DivNode):
 
     def setEnabled(self, enabled):
         if enabled:
-            avg.fadeIn(self, 1000)
+            avg.Anim.fadeIn(self, 1000)
             self.sensitive = True
         else:
             self.opacity = 0
@@ -493,8 +493,8 @@ class Clouds(avg.ImageNode):
 
     def blink(self):
         def reset():
-            avg.fadeOut(self, 180)
-        avg.fadeIn(self, 80, random.uniform(0.05, self.maxOpacity), reset)
+            avg.Anim.fadeOut(self, 180)
+        avg.Anim.fadeIn(self, 80, random.uniform(0.05, self.maxOpacity), reset)
 
 
 class RIImage(avg.ImageNode):
@@ -562,7 +562,7 @@ class QuitSwitch(avg.DivNode):
             self.__cursorId = event.cursorid
             self.__buttonInitialPos = event.pos - self.__button.pos
             self.__button.activate(True)
-            avg.fadeIn(self.__slider, 100)
+            avg.Anim.fadeIn(self.__slider, 100)
 
             return True
 
@@ -574,7 +574,7 @@ class QuitSwitch(avg.DivNode):
             self.__button.activate(False)
 
             if self.__button.x > 20:
-                avg.fadeOut(self.__slider, 100)
+                avg.Anim.fadeOut(self.__slider, 100)
                 self.__anim = avg.EaseInOutAnim(self.__button, 'x', 200, self.__button.x,
                         self.__xlimit, 50, 150)
                 self.__anim.start()

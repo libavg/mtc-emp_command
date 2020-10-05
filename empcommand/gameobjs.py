@@ -328,7 +328,7 @@ class Missile(LayeredSprite):
     def explode(self, pos):
         if not self.__isExploding:
             self.__isExploding = True
-            self.__fade = avg.fadeOut(
+            self.__fade = avg.Anim.fadeOut(
                     self.traj, self.explosionClass.DURATION / 2, self.__cleanup)
             self.explosionClass(pos)
 
@@ -545,7 +545,7 @@ class Turret(Target):
             self.__fadeInNukeAlert()
 
     def __fadeInNukeAlert(self):
-        self.__nukeAnim = avg.fadeIn(self.nukeAlert, 100, 1, self.__fadeOutNukeAlert)
+        self.__nukeAnim = avg.Anim.fadeIn(self.nukeAlert, 100, 1, self.__fadeOutNukeAlert)
 
     def __fadeOutNukeAlert(self):
         if self.__hasNuke:
@@ -553,7 +553,7 @@ class Turret(Target):
         else:
             cb = None
 
-        self.__nukeAnim = avg.fadeOut(self.nukeAlert, 100, cb)
+        self.__nukeAnim = avg.Anim.fadeOut(self.nukeAlert, 100, cb)
 
     def __repr__(self):
         return 'Turret: a=%d l=%d' % (self.__ammo, self.lives)
