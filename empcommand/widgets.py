@@ -2,18 +2,18 @@
 # -*- coding: utf-8 -*-
 
 # EMP Command: a missile command multitouch clone
-# Copyright (c) 2010-2015 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
-# 
+# Copyright (c) 2010-2020 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+#
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright notice, this list of
 #    conditions and the following disclaimer.
-# 
+#
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
 #    of conditions and the following disclaimer in the documentation and/or other
 #    materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY OXullo Intersecans ``AS IS'' AND ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
 # FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL OXullo Intersecans OR
@@ -23,11 +23,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # The views and conclusions contained in the software and documentation are those of the
-# authors and should not be interpreted as representing official policies, either 
+# authors and should not be interpreted as representing official policies, either
 # expressed or implied, of OXullo Intersecans.
-
 
 import random
 from libavg import avg, Point2D, app
@@ -63,7 +62,7 @@ class VLayout(avg.DivNode):
             objSize = obj.size
         else:
             objSize = obj.getMediaSize()
-            
+
         self.yoffs += objSize.y + self.interleave + offset
         self.height = self.yoffs
 
@@ -100,11 +99,11 @@ class MenuItem(avg.DivNode):
         self.wnode.x = width / 2
         self.cb = cb
         self.subscribe(self.CURSOR_DOWN, lambda e: self.executeCallback())
-        
+
         self.curContainer = avg.DivNode(sensitive=False, parent=self)
         avg.LineNode(pos1=(0, 0), pos2=(0, self.height), color=consts.COLOR_RED,
                 strokewidth=3, parent=self.curContainer)
-        
+
         self.__scrollSpeed = engine.norm.x(self.SCROLL_SPEED * 100) / float(100)
         self.curState = 0
 
@@ -128,7 +127,7 @@ class MenuItem(avg.DivNode):
             if self.curContainer.x < 0:
                 self.curContainer.x = 0
                 self.curState = 0
-            
+
     def executeCallback(self):
         engine.SoundManager.play('click.ogg')
         self.cb()
@@ -141,47 +140,47 @@ class DifficultyMenuItem(MenuItem):
         self.registerInstance(self, parent)
         self.__lptr = 1
         self.__setText()
-    
+
     def executeCallback(self):
         engine.SoundManager.play('click.ogg')
         self.__lptr = (self.__lptr + 1) % 3
         self.__setText()
         self.cb(self.__lptr)
-    
+
     def __setText(self):
         self.wnode.text = self.LABELS[self.__lptr]
-        
+
 
 class Menu(avg.DivNode):
     def __init__(self, onPlay, onAbout, onDiffChanged, onQuit, parent=None, **kwargs):
         super(Menu, self).__init__(**kwargs)
         self.registerInstance(self, parent)
-        
+
         self.layout = VLayout(interleave=10, width=self.width, parent=self)
         self.layout.add(MenuItem(text='Play', width=self.width, cb=onPlay))
         self.layout.add(DifficultyMenuItem(width=self.width, cb=onDiffChanged))
         self.layout.add(MenuItem(text='About', width=self.width, cb=onAbout))
         self.layout.add(MenuItem(text='Quit', width=self.width, cb=onQuit))
         self.height = self.layout.height
-        
+
         self.setActive(0, fb=False)
-    
+
     def setActive(self, idx, fb=True):
         if idx == len(self.layout.objs) or idx < 0:
             return
-            
+
         for ob in self.layout.objs:
             ob.setActive(False)
-        
+
         self.layout.objs[idx].setActive(True)
         self.__active = idx
-        
+
         if fb:
             engine.SoundManager.play('selection.ogg', volume=0.5)
-    
+
     def update(self, dt):
         self.layout.objs[self.__active].update(dt)
-        
+
     def onKeyDown(self, event):
         if event.keystring == 'down':
             self.setActive(self.__active + 1)
@@ -189,7 +188,7 @@ class Menu(avg.DivNode):
             self.setActive(self.__active - 1)
         elif event.keystring in ('return', 'space'):
             self.layout.objs[self.__active].executeCallback()
-            
+
 
 class HiscoreTab(avg.DivNode):
     SPEED_FACTOR = 20
@@ -346,7 +345,7 @@ class Keyboard(avg.DivNode):
     def __init__(self, keySize, padding, cb, parent=None, **kwargs):
         super(Keyboard, self).__init__(**kwargs)
         self.registerInstance(self, parent)
-         
+
         self.__cb = cb
 
         rows = [
@@ -354,7 +353,7 @@ class Keyboard(avg.DivNode):
             ['ASDFGHJKL#', (keySize + padding) / 2],
             ['ZXCVBNM ', keySize + padding]
         ]
-        
+
         self.allowedKeys = []
 
         maxx = maxy = 0
@@ -422,7 +421,7 @@ class Gauge(avg.DivNode):
         self.__levelContainer = avg.DivNode(parent=self)
         self.__level = avg.RectNode(size=self.size, opacity=0, fillopacity=1,
                 fillcolor=color, parent=self.__levelContainer)
-        avg.RectNode(size=self.size, color=color, strokewidth=1, 
+        avg.RectNode(size=self.size, color=color, strokewidth=1,
                 parent=self.__levelContainer)
 
         self.__fval = 0
@@ -460,22 +459,22 @@ class Gauge(avg.DivNode):
 class CrossHair(avg.DivNode):
     NORMAL_COLOR = 'eeeeee'
     WARNING_COLOR = 'ff4444'
-    
+
     warningy = -1
-    
+
     def __init__(self, parent=None, **kwargs):
         super(CrossHair, self).__init__(**kwargs)
         self.registerInstance(self, parent)
         self.__l1 = avg.LineNode(pos1=(10, 0), pos2=(10, 20), strokewidth=4, parent=self)
         self.__l2 = avg.LineNode(pos1=(0, 10), pos2=(20, 10), strokewidth=4, parent=self)
         self.size = (20, 20)
-    
+
     def refresh(self):
         if self.warningy > 0 and self.pos.y > self.warningy:
             self.__setWarning(True)
         else:
             self.__setWarning(False)
-            
+
     def __setWarning(self, warning):
         if warning:
             self.__l1.color = self.__l2.color = self.WARNING_COLOR
@@ -491,7 +490,7 @@ class Clouds(avg.ImageNode):
 
         self.opacity = 0
         self.maxOpacity = maxOpacity
-    
+
     def blink(self):
         def reset():
             avg.fadeOut(self, 180)
@@ -506,7 +505,7 @@ class RIImage(avg.ImageNode):
             nf = engine.norm.x
         else:
             nf = engine.norm.y
-        
+
         self.size = (nf(self.getMediaSize().x), nf(self.getMediaSize().y))
 
 
@@ -519,7 +518,7 @@ class ExitButton(avg.DivNode):
 
         self.__fill = RIImage(href='exit_fill.png', parent=self)
         self.__icon = RIImage(href='exit.png', parent=self)
-        
+
     def activate(self, active):
         if active:
             self.opacity = 1
@@ -542,18 +541,18 @@ class QuitSwitch(avg.DivNode):
         self.__anim = None
         self.__cb = cb
         self.__xlimit = engine.norm.x(self.BUTTON_RIGHT_XLIMIT)
-        
+
         self.__button.subscribe(self.CURSOR_DOWN, self.__onDown)
         self.__button.subscribe(self.CURSOR_UP, self.__onUp)
         self.__button.subscribe(self.CURSOR_MOTION, self.__onMotion)
-    
+
         self.reset()
-        
+
     def reset(self):
         self.__button.pos = (self.__xlimit, 0)
         self.__slider.opacity = 0
         self.__button.activate(False)
-        
+
     def __onDown(self, event):
         try:
             self.__button.setEventCapture(event.cursorid)
@@ -564,16 +563,16 @@ class QuitSwitch(avg.DivNode):
             self.__buttonInitialPos = event.pos - self.__button.pos
             self.__button.activate(True)
             avg.fadeIn(self.__slider, 100)
-            
+
             return True
-    
+
     def __onUp(self, event):
         if self.__cursorId is not None:
             self.__button.releaseEventCapture(event.cursorid)
             self.__cursorId = None
-            
+
             self.__button.activate(False)
-            
+
             if self.__button.x > 20:
                 avg.fadeOut(self.__slider, 100)
                 self.__anim = avg.EaseInOutAnim(self.__button, 'x', 200, self.__button.x,
@@ -581,7 +580,7 @@ class QuitSwitch(avg.DivNode):
                 self.__anim.start()
             else:
                 self.__cb()
-    
+
     def __onMotion(self, event):
         if self.__cursorId is not None:
             nx = (event.pos - self.__buttonInitialPos).x

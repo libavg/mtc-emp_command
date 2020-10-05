@@ -2,18 +2,18 @@
 # -*- coding: utf-8 -*-
 
 # EMP Command: a missile command multitouch clone
-# Copyright (c) 2010-2015 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
-# 
+# Copyright (c) 2010-2020 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+#
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright notice, this list of
 #    conditions and the following disclaimer.
-# 
+#
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
 #    of conditions and the following disclaimer in the documentation and/or other
 #    materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY OXullo Intersecans ``AS IS'' AND ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
 # FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL OXullo Intersecans OR
@@ -23,11 +23,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # The views and conclusions contained in the software and documentation are those of the
-# authors and should not be interpreted as representing official policies, either 
+# authors and should not be interpreted as representing official policies, either
 # expressed or implied, of OXullo Intersecans.
-
 
 import random
 import math
@@ -79,7 +78,7 @@ class Explosion(LayeredSprite):
             engine.SoundManager.play(random.choice(self.SOUND), randomVolume=True)
 
         self.objects.append(self)
-        
+
         if self.cb is not None:
             self.cb()
 
@@ -92,7 +91,7 @@ class Explosion(LayeredSprite):
     @classmethod
     def filter(cls, subClass):
         return [t for t in cls.objects if isinstance(t, subClass)]
-    
+
     @classmethod
     def registerCallback(cls, cb):
         cls.cb = cb
@@ -178,7 +177,7 @@ class Bonus(LayeredSprite):
     DROP_RADIUS_SQ = 900
 
     spawnTimestamp = {}
-    
+
     STATE_BUSY = 'STATE_BUSY'
     STATE_READY = 'STATE_READY'
     STATE_DRAGGING = 'STATE_DRAGGING'
@@ -193,7 +192,7 @@ class Bonus(LayeredSprite):
         self._state = self.STATE_BUSY
         self._tmr = player.setInterval(100, self.__tick)
         self._remainingTicks = consts.BONUS_AVAILABILITY_TICKS
-        
+
         self._node = widgets.RIImage(href=icon, pos=pos, parent=self.layer)
         diman = avg.LinearAnim(self._node, 'size', self.TRANSITION_TIME,
                 self._node.getMediaSize() * self.TRANSITION_ZOOM,
@@ -255,13 +254,13 @@ class Bonus(LayeredSprite):
             if self._remainingTicks == 0:
                 self._state = self.STATE_BUSY
                 self._destroy()
-        
+
     def __blink(self):
         if self._node.opacity == 0:
             self._node.opacity = self.OPACITY
         else:
             self._node.opacity = 0
-    
+
     def _destroy(self):
         self._state = self.STATE_BUSY
         player.clearInterval(self._tmr)
@@ -569,4 +568,3 @@ class City(Target):
                     diagNorm=True),
                 fillopacity=1, fillcolor='8888ff', opacity=0, parent=self._node)
         super(City, self).__init__(slot, self._node)
-

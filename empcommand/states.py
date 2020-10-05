@@ -2,18 +2,18 @@
 # -*- coding: utf-8 -*-
 
 # EMP Command: a missile command multitouch clone
-# Copyright (c) 2010-2015 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
-# 
+# Copyright (c) 2010-2020 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+#
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright notice, this list of
 #    conditions and the following disclaimer.
-# 
+#
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
 #    of conditions and the following disclaimer in the documentation and/or other
 #    materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY OXullo Intersecans ``AS IS'' AND ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
 # FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL OXullo Intersecans OR
@@ -23,11 +23,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # The views and conclusions contained in the software and documentation are those of the
-# authors and should not be interpreted as representing official policies, either 
+# authors and should not be interpreted as representing official policies, either
 # expressed or implied, of OXullo Intersecans.
-
 
 import random
 import math
@@ -57,7 +56,7 @@ class Start(engine.FadeGameState):
         im.pos = (0, engine.norm.size.y - im.size.y)
 
         rightPane = avg.DivNode(pos=engine.norm.p((765, 90)), parent=self)
-        
+
         self.__menu = widgets.Menu(onPlay=self.__onPlay, onAbout=self.__onAbout,
                 onDiffChanged=self.__onDiffChanged, onQuit=self.__onQuit,
                 size=engine.norm.p((350, 300)), parent=rightPane)
@@ -65,18 +64,18 @@ class Start(engine.FadeGameState):
         self.__hiscoreTab = widgets.HiscoreTab(db=app.instance.mainDiv.scoreDatabase,
                 pos=engine.norm.p((0, 350)), size=engine.norm.p((350, 270)),
                 parent=rightPane)
-        
+
         self.registerBgTrack('theme_start.ogg')
-        
+
     def _resume(self):
         self.__hiscoreTab.refresh()
-    
+
     def _preTransIn(self):
         self.__hiscoreTab.refresh()
 
     def _onKeyDown(self, event):
         self.__menu.onKeyDown(event)
-        
+
         if consts.DEBUG:
             if event.keystring == 's':
                 self.sequencer.changeState('game')
@@ -96,10 +95,10 @@ class Start(engine.FadeGameState):
 
     def __onAbout(self):
         self.sequencer.changeState('about')
-    
+
     def __onDiffChanged(self, ndiff):
         app.instance.mainDiv.difficultyLevel = ndiff
-        
+
     def __onQuit(self):
         player.stop()
 
@@ -109,7 +108,7 @@ class About(engine.FadeGameState):
         im = avg.ImageNode(href='logo.png', parent=self)
         xfactor = engine.norm.size.x / im.getMediaSize().x / 2
         im.size = im.getMediaSize() * xfactor
-        
+
         about = widgets.VLayout(interleave=10, width=600, pos=engine.norm.p((580, 300)),
                 parent=self)
         about.add(widgets.GameWordsNode(text='EMPCommand', color=consts.COLOR_BLUE,
@@ -137,21 +136,21 @@ class About(engine.FadeGameState):
                 raise up your score and consider that once a turret has been hit for three
                 times, it's gone, along with its ammo.''',
                 width=engine.norm.x(600), color='ffffff', fontsize=12))
-                
+
         about.add(widgets.GameWordsNode(
                 text='This game is based on libavg (http://www.libavg.de)',
                 color=consts.COLOR_RED, fontsize=16), offset=10)
-        
+
         avg.ImageNode(href='enmy_sky.png', size=(engine.norm.size.x, engine.norm.y(300)),
                 pos=(0, engine.norm.size.y - engine.norm.y(300)), angle=math.pi,
                 opacity=0.2, parent=self)
-        
+
         self.registerBgTrack('theme_about.ogg', maxVolume=0.5)
 
     def _onTouch(self, event):
         engine.SoundManager.play('click.ogg')
         self.sequencer.changeState('start')
-    
+
     def _onKeyDown(self, event):
         engine.SoundManager.play('click.ogg')
         self.sequencer.changeState('start')
@@ -170,7 +169,7 @@ class Game(engine.FadeGameState):
         self.clouds = widgets.Clouds(maxOpacity=0.4, size=(engine.norm.size.x,
                 engine.norm.y(600)), parent=self)
         EnemyExplosion.registerCallback(self.clouds.blink)
-        
+
         # Allied ground
         a = engine.norm.x(5)
         b = engine.norm.y(10)
@@ -185,7 +184,7 @@ class Game(engine.FadeGameState):
             (engine.norm.size.x + a, engine.norm.size.y + d),
             (-a, engine.norm.size.y + d),
         )
-        
+
         avg.PolygonNode(
                 pos=polpos,
                 color=consts.COLOR_BLUE,
@@ -194,7 +193,7 @@ class Game(engine.FadeGameState):
                 fillopacity=0.05,
                 parent=self
                 )
-        
+
         self.explGround = avg.PolygonNode(
                 pos=polpos,
                 fillcolor=consts.COLOR_RED,
@@ -246,7 +245,7 @@ class Game(engine.FadeGameState):
                 size=(engine.norm.x(15), engine.norm.y(300)), parent=self)
         self.__enemiesGauge.addLabel('ENMY')
         self.__enemiesGauge.setOpacity(0.3)
-        
+
         self.__lowAmmoNotified = False
 
         self.registerBgTrack('theme_game.ogg', maxVolume=0.3)
@@ -254,7 +253,7 @@ class Game(engine.FadeGameState):
         if consts.DEBUG:
             self.__debugArea = widgets.GameWordsNode(pos=(10, 10), size=(300, 600),
                 fontsize=8, color='ffffff', opacity=0.7, parent=self)
-        
+
         self.__quitSwitch = widgets.QuitSwitch(cb=self.__onExit,
                 pos=engine.norm.p((1076, 10)), parent=self)
 
@@ -282,7 +281,7 @@ class Game(engine.FadeGameState):
 
         for obj in Target.objects + Missile.objects:
             obj.destroy()
-        
+
         self.__quitSwitch.reset()
         self.__lowAmmoNotified = False
 
@@ -294,10 +293,10 @@ class Game(engine.FadeGameState):
         Missile.speedMul = 1 + (app.instance.mainDiv.difficultyLevel - 1) * consts.SPEEDMUL_OFFSET_LEVEL
         self.nukeFired = False
         self.__wave += 1
-        
+
         nenemies =  int(self.__wave * consts.ENEMIES_WAVE_MULT * \
                 (1 + app.instance.mainDiv.difficultyLevel * 0.2))
-        
+
         self.__createSpawnTimeline(nenemies)
         self.__enemiesGone = 0
         self.gameData['initialEnemies'] = nenemies
@@ -473,7 +472,7 @@ class Game(engine.FadeGameState):
         else:
             avg.EaseInOutAnim(self.explGround, 'fillopacity', 200,
                     0.2, 0, 0, 200).start()
-                        
+
             if not target.isDead and target.hit():
                 TextFeedback(target.getHitPos(), 'BUSTED!', consts.COLOR_RED)
                 # If we lose a turret, ammo stash sinks with it
@@ -481,13 +480,13 @@ class Game(engine.FadeGameState):
 
     def __getWaveTime(self):
         return player.getFrameTime() - self.__waveTimer
-        
+
     def __createSpawnTimeline(self, nenemies):
         self.__enemiesSpawnTimeline = []
         avgSpawnTime = consts.WAVE_DURATION * 1000.0 / nenemies
         absJitter = int(avgSpawnTime * consts.ENEMIES_SPAWNER_JITTER_FACTOR)
         tm = consts.WAVE_PREAMBLE * 1000
-        
+
         for i in xrange(nenemies):
             self.__enemiesSpawnTimeline.append(tm)
             tm += avgSpawnTime + random.randrange(-absJitter, absJitter)
@@ -497,7 +496,7 @@ class Game(engine.FadeGameState):
     def __checkGameStatus(self):
         if self.__gameState not in (self.GAMESTATE_PLAYING, self.GAMESTATE_ULTRASPEED):
             return
-            
+
         # Game end
         if not Target.filter(City):
             self.sequencer.changeState('gameover')
@@ -577,7 +576,7 @@ class Results(engine.FadeGameState):
 
         gameState.addScore(len(Target.filter(City)) * consts.CITY_RESCUE_SCORE *
                 (1 + app.instance.mainDiv.difficultyLevel * 0.3))
-                
+
         avg.EaseInOutAnim(self.__resultHeader, 'y', consts.RESULTS_ADDROW_DELAY / 2,
                 engine.norm.size.y / 2,
                 engine.norm.size.y / 2 - 140, False,
@@ -663,16 +662,16 @@ class Hiscore(engine.FadeGameState):
         key = event.keystring.upper()
         if key in ('#', '<'):
             return False
-        
+
         if key == 'RETURN':
             key = '#'
         elif key == 'BACKSPACE':
             key = '<'
-            
+
         if key in self.__keyboard.allowedKeys:
             self.__onKeyTouch(key)
             return True
-        
+
     def __saveScore(self):
         name = self.__playerName.text
         if name == '':
@@ -707,4 +706,3 @@ class Hiscore(engine.FadeGameState):
         else:
             engine.SoundManager.play('selection.ogg', volume=0.5)
             self.__playerName.addChar(key)
-

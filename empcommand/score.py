@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # engine module: generic game engine based on libavg, AVGApp
-# Copyright (c) 2010-2015 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
+# Copyright (c) 2010-2020 OXullo Intersecans <x@brainrapers.org>. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
