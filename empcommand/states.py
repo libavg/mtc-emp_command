@@ -77,10 +77,10 @@ class Start(engine.FadeGameState):
         self.__menu.onKeyDown(event)
 
         if consts.DEBUG:
-            if event.keystring == 's':
+            if event.keyname == 'S':
                 self.sequencer.changeState('game')
                 return True
-            if event.keystring == 'd':
+            if event.keyname == 'D':
                 import time
                 time.sleep(random.random())
                 return True
@@ -402,43 +402,43 @@ class Game(engine.FadeGameState):
 
     def _onKeyDown(self, event):
         if consts.DEBUG:
-            if event.keystring == 'x':
+            if event.keyname == 'X':
                 self.sequencer.changeState('gameover')
                 return True
-            elif event.keystring == 'r':
+            elif event.keyname == 'R':
                 self.sequencer.changeState('results')
                 return True
-            elif event.keystring == 'd':
+            elif event.keyname == 'D':
                 Target.filter(Turret)[0].hit()
                 self.updateAmmoGauge()
                 return True
-            elif event.keystring == 'u':
+            elif event.keyname == 'U':
                 Missile.speedMul = consts.ULTRASPEED_MISSILE_MUL
                 self.__changeGameState(self.GAMESTATE_ULTRASPEED)
                 return True
-            elif event.keystring == 'n':
+            elif event.keyname == 'N':
                 self.__wave = 15
                 self.sequencer.changeState('game')
                 return True
-            elif event.keystring == 'b':
+            elif event.keyname == 'B':
                 NukeBonus((200, 200))
                 return True
-            elif event.keystring == 'a':
+            elif event.keyname == 'A':
                 AmmoBonus((300, 200))
                 return True
-            elif event.keystring == 'k':
-                map(lambda o: o.explode(), Missile.filter(Enemy))
+            elif event.keyname == 'K':
+                map(lambda o: o.explode(o.traj.pos2), Missile.filter(Enemy))
                 return True
-            elif event.keystring == 's':
+            elif event.keyname == 'S':
                 self.addScore(5000)
                 return True
-            elif event.keystring == 'e':
+            elif event.keyname == 'E':
                 self.clouds.blink()
                 return True
-            elif event.keystring == '1':
+            elif event.keyname == '1':
                 self.sequencer.changeState('hiscore')
                 return True
-            elif event.keystring == 'h':
+            elif event.keyname == 'H':
                 self.reset()
                 self.nextWave()
                 return True
@@ -659,7 +659,7 @@ class Hiscore(engine.FadeGameState):
         self.__resetTimeout()
 
     def _onKeyDown(self, event):
-        key = event.keystring.upper()
+        key = event.keyname.upper()
         if key in ('#', '<'):
             return False
 

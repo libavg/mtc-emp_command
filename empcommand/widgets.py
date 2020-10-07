@@ -182,11 +182,11 @@ class Menu(avg.DivNode):
         self.layout.objs[self.__active].update(dt)
 
     def onKeyDown(self, event):
-        if event.keystring == 'down':
+        if event.keyname == 'Down':
             self.setActive(self.__active + 1)
-        elif event.keystring == 'up':
+        elif event.keyname == 'Up':
             self.setActive(self.__active - 1)
-        elif event.keystring in ('return', 'space'):
+        elif event.keyname in ('Return', 'Space'):
             self.layout.objs[self.__active].executeCallback()
 
 
